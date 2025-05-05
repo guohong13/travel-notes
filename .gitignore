@@ -2,6 +2,7 @@
 
 # dependencies
 pc/node_modules
+mobile/node_modules
 
 # misc
 .DS_Store
