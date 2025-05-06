@@ -1,15 +1,25 @@
 const express = require("express");
-const app = express();
+const cors = require("cors");
+const multer = require("multer");
+const jwt = require("jsonwebtoken");
+const { jwtSecret } = require("./config");
 const router = require("./router");
-const port = 3000;
 
-// 解析 JSON 请求体
+const app = express();
+
+// 中间件配置
+app.use(cors()); // 允许跨域请求
 app.use(express.json());
-
-// 使用路由
+app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static("uploads")); // 静态资源路径
 app.use("/api", router);
 
-// 启动服务器
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "服务器内部错误" });
+});
+
+const PORT = 3300;
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
 });
