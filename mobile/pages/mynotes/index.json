@@ -1,0 +1,7 @@
+{
+    "navigationStyle": "custom",
+    "usingComponents": {
+      "t-navbar": "tdesign-miniprogram/navbar/navbar",
+      "mycard": "/components/mycard"
+    }
+  }

@@ -1,0 +1,29 @@
+<nav nav-type="search" />
+<view class="home-container">
+  <view class="home-content">
+    <!-- 增加一个空的占位元素，用于保持布局 -->
+    <view class="sticky-placeholder" style="height: {{stickyHeight}}px;"></view>
+    <t-tabs defaultValue="recommend">
+      <t-tab-panel label="游记列表" value="recommend">
+        <t-pull-down-refresh
+          value="{{enable}}"
+          bind:refresh="onRefresh"
+          loadingTexts="{{['下拉刷新', '松手刷新', '正在刷新', '刷新完成']}}"
+        >
+        <view class="home-card-list">
+            <card
+              wx:for="{{cardInfo}}"
+              wx:key="index"
+              desc="{{item.desc}}"
+              url="{{item.mediaList[0].url}}"
+              avatar= "{{item.avatar}}"
+              nickname= "{{item.nickname}}"
+              bind:tap="onTapCard"
+              data-item="{{item}}"
+            />
+          </view>
+        </t-pull-down-refresh>
+      </t-tab-panel>
+    </t-tabs>
+  </view>
+</view>

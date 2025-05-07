@@ -1,0 +1,8 @@
+<t-navbar title="我的" ></t-navbar>
+<view class="my-page">
+  <view class="travel-note-list">
+    <block wx:for="{{travelNotes}}" wx:key="id">
+      <mycard travel-note="{{item}}" bind:delete="onDeleteTravelNote" bind:edit="onEditTravelNote"/>
+    </block>
+  </view>
+</view>
