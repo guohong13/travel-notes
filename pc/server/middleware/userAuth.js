@@ -1,4 +1,8 @@
 // 中间件：验证用户 token
+
+const jwt = require("jsonwebtoken");
+const { jwtSecret } = require("../config");
+
 function verifyUserToken(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {

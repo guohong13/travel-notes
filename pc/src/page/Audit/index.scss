@@ -1,0 +1,47 @@
+.audit-page {
+  padding: 24px;
+
+  .audit-page-search {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    align-items: center;
+
+    input {
+      border: none;
+      flex: 1;
+      padding: 12px;
+      outline: none;
+    }
+    .audit-page-buttons {
+      .audit-page-button--pass {
+        color: green;
+      }
+    }
+
+    // button {
+    //   border: none;
+    //   border-radius: 0 8px 8px 0;
+    //   background-color: #1890ff;
+    //   color: white;
+    //   padding: 12px 24px;
+    //   outline: none;
+    //   display: flex;
+    //   align-items: center;
+    //   gap: 8px;
+
+    //   &:hover {
+    //     background-color: #40a9ff;
+    //   }
+    // }
+  }
+
+  .audit-page-tags {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+}

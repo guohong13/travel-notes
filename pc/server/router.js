@@ -1,20 +1,11 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const multer = require("multer");
 const bcrypt = require("bcrypt");
-const verifyUserToken = require("./middleware/userAuth");
-const { db, jwtSecret } = require("./config.js");
+const { db, jwtSecret } = require("./config");
 const router = express.Router();
-
-// 文件上传配置
-const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: (_, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + "-" + file.originalname);
-  },
-});
-const upload = multer({ storage });
+const verifyUserToken = require("./middleware/userAuth");
+const verifyAdminToken = require("./middleware/adminAuth");
+const upload = require("./middleware/multerConfig");
 
 /**
  * 用户注册接口
@@ -342,7 +333,7 @@ router.put(
 /**
  * 用户删除游记接口(更新状态实现逻辑删除)
  */
-router.delete("/notes/delete:id", verifyUserToken, async (req, res) => {
+router.delete("/notes/delete/:id", verifyUserToken, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
 
@@ -406,7 +397,7 @@ router.delete("/notes/delete:id", verifyUserToken, async (req, res) => {
 });
 
 /**
- * 获取游记详情接口
+ * 首页获取游记详情接口
  */
 router.get("/notes", async (req, res) => {
   const querySql = `
@@ -575,29 +566,277 @@ router.get("/notes/search", async (req, res) => {
     });
   }
 });
-// 管理员登录
-router.post("/admin/login", async (req, res) => {
-  // const { username, password_hash } = req.body;
+
+/**
+ * 管理员登入接口
+ */
+router.post("/admin/login", (req, res) => {
   const { username, password } = req.body;
-  const query = "SELECT * FROM admins WHERE username =? AND password_hash =?";
-  // db.query(query, [username, password_hash], (error, results) => {
-  db.query(query, [username, password], (error, results) => {
-    if (error) {
-      console.error(error);
-      return res.status(500).json({ error: "服务端错误" });
+
+  // 先查询数据库中是否已经存在该管理员用户名
+  const checkSql = "SELECT * FROM admins WHERE username = ?";
+  db.query(checkSql, [username], (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        code: 0,
+        message: "数据库查询出错，登录失败",
+        data: null,
+      });
     }
 
-    if (results.length > 0) {
-      // 用户存在，生成 JWT 令牌
-      const token = jwt.sign({ isAdmin: true }, jwtSecret, {
+    // 如果查询结果为空，说明用户名不存在
+    if (results.length === 0) {
+      return res.status(401).json({
+        code: 0,
+        message: "登录失败，用户名不存在",
+        data: null,
+      });
+    }
+
+    // 对用户名进行密码校验
+    const admin = results[0];
+    bcrypt.compare(password, admin.password_hash, (compareErr, isMatch) => {
+      if (compareErr) {
+        return res.status(500).json({
+          code: 0,
+          message: "密码验证出错，登录失败",
+          data: null,
+        });
+      }
+
+      if (!isMatch) {
+        return res.status(400).json({
+          code: 0,
+          message: "用户名或密码错误",
+          data: null,
+        });
+      }
+      // 生成包含用户id和role的token
+      const token = jwt.sign({ id: admin.id, role: admin.role }, jwtSecret, {
         expiresIn: "7d",
       });
-      return res.status(201).json({ token, message: "登入成功" });
-    } else {
-      // 用户不存在或密码错误
-      return res.status(401).json({ error: "用户名或密码错误" });
-    }
+      res.status(201).json({
+        code: 1,
+        message: "登录成功",
+        data: { token },
+      });
+    });
   });
+});
+
+/**
+ * 管理员获取待审核游记列表接口
+ */
+router.get("/notes/admin", async (req, res) => {
+  const querySql = `
+      SELECT 
+        tn.id,
+        tn.user_id,
+        tn.title,
+        tn.content,
+        tn.video_url,
+        tn.status,
+        tn.created_at,
+        tn.updated_at,
+        GROUP_CONCAT(ni.image_url) AS images
+      FROM travel_notes tn
+      LEFT JOIN note_images ni 
+        ON tn.id = ni.travel_notes_id 
+        AND ni.is_deleted = 0
+      WHERE tn.is_deleted = 0
+        AND tn.status = "pending"
+      GROUP BY tn.id
+      ORDER BY tn.created_at DESC
+      LIMIT 10
+    `;
+  try {
+    const [notes] = await db.promise().query(querySql);
+
+    // 格式化图片数据
+    const formatted = notes.map((note) => ({
+      ...note,
+      images: note.images.split(","),
+    }));
+
+    return res.status(201).json({
+      code: 1,
+      message: "请求成功",
+      data: formatted,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 管理员通过待审核游记接口
+ */
+router.put("/notes/approve/:id", verifyAdminToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 使用排他锁锁定要更新的游记记录
+      const lockSql = `SELECT * FROM travel_notes WHERE id =? AND status = 'pending' FOR UPDATE`;
+      const [lockedNote] = await connection.query(lockSql, [id]);
+
+      if (lockedNote.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          code: 0,
+          message: "游记不存在",
+          data: null,
+        });
+      }
+
+      const updateSql = `UPDATE travel_notes SET status = 'approved', updated_at = NOW() WHERE id =? AND status = 'pending'`;
+      const [result] = await connection.query(updateSql, [id]);
+
+      await connection.commit();
+      res.status(200).json({
+        code: 1,
+        message: "游记审核已通过",
+        data: null,
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      return res.status(500).json({
+        code: 0,
+        message: "服务器内部错误",
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 管理员拒绝待审核游记接口
+ */
+router.put("/notes/reject/:id", verifyAdminToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 使用排他锁锁定要更新的游记记录
+      const lockSql = `SELECT * FROM travel_notes WHERE id =? AND status = 'pending' FOR UPDATE`;
+      const [lockedNote] = await connection.query(lockSql, [id]);
+
+      if (lockedNote.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          code: 0,
+          message: "游记不存在",
+          data: null,
+        });
+      }
+
+      const updateSql = `UPDATE travel_notes SET status ='rejected', updated_at = NOW() WHERE id =? AND status = 'pending'`;
+      const [result] = await connection.query(updateSql, [id]);
+
+      await connection.commit();
+      res.status(200).json({
+        code: 1,
+        message: "游记审核不通过",
+        data: null,
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      return res.status(500).json({
+        code: 0,
+        message: "服务器内部错误",
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 管理员删除待审核游记接口
+ */
+router.delete("/notes/delete/:id", verifyAdminToken, async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.user;
+  try {
+    if (role !== "admin") {
+      return res.status(403).json({
+        code: 0,
+        message: "无权限删除游记",
+        data: null,
+      });
+    }
+
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 使用排他锁锁定要删除的游记记录
+      const lockSql = `SELECT * FROM travel_notes WHERE id =? AND is_deleted = 0 FOR UPDATE`;
+      const [lockedNote] = await connection.query(lockSql, [id]);
+
+      if (lockedNote.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          code: 0,
+          message: "游记不存在或已被删除",
+          data: null,
+        });
+      }
+
+      // 标记游记为已删除
+      const updateSql = `UPDATE travel_notes SET is_deleted = 1, updated_at = NOW() WHERE id =?`;
+      await connection.query(updateSql, [id]);
+
+      // 删除游记图片
+      const deleteImageSql = `UPDATE note_images SET is_deleted = 1 WHERE travel_notes_id =?`;
+      await connection.query(deleteImageSql, [id]);
+
+      await connection.commit();
+      res.status(200).json({
+        code: 1,
+        message: "游记已成功删除",
+        data: null,
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      return res.status(500).json({
+        code: 0,
+        message: "删除游记失败",
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
 });
 
 module.exports = router;
