@@ -31,7 +31,13 @@
     background-color: @bg-color;
   }
 }
-
+.sticky_nav {
+    position: sticky;
+    top: 0;
+    z-index: 100; // 确保在内容之上
+    background-color: white; // 根据需要调整背景颜色
+    border-bottom: 1px solid #e5e5e5;
+}
 .home-release {
   position: fixed;
   bottom: 208rpx;

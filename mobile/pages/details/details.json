@@ -1,5 +1,5 @@
 {
-  "navigationStyle": "custom",
+    "navigationStyle": "custom",
   "usingComponents": {
     "t-navbar": "tdesign-miniprogram/navbar/navbar",
     "t-tabs": "tdesign-miniprogram/tabs/tabs",

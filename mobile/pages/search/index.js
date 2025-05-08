@@ -70,11 +70,9 @@ Page({
       searchValue,
       historyWords,
     });
-    // if (searchValue) {
-    //     wx.navigateTo({
-    //         url: `/pages/goods/result/index?searchValue=${searchValue}`,
-    //     });
-    // }
+    wx.navigateTo({
+      url: `/pages/search/results/index?q=${encodeURIComponent(searchValue)}`,
+    });
   },
 
   /**
@@ -146,6 +144,9 @@ Page({
     const searchValue = historyWords[index || 0] || '';
 
     this.setHistoryWords(searchValue);
+    wx.navigateTo({
+      url: `/pages/search/results/index?q=${encodeURIComponent(searchValue)}`,
+    });
   },
 
   handlePopularTap(e) {
@@ -154,6 +155,9 @@ Page({
     const searchValue = popularWords[index || 0] || '';
 
     this.setHistoryWords(searchValue);
+    wx.navigateTo({
+      url: `/pages/search/results/index?q=${encodeURIComponent(searchValue)}`,
+    });
   },
 
   /**
@@ -166,6 +170,9 @@ Page({
     if (value.length === 0) return;
 
     this.setHistoryWords(value);
+    wx.navigateTo({
+      url: `/pages/search/results/index?q=${encodeURIComponent(value)}`,
+    });
   },
 
   /**

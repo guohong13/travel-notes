@@ -4,6 +4,20 @@
     "miniprogram": {
       "list": [
         {
+          "name": "pages/mynotes/index",
+          "pathName": "pages/mynotes/index",
+          "query": "",
+          "scene": null,
+          "launchMode": "default"
+        },
+        {
+          "name": "pages/details/details",
+          "pathName": "pages/details/details",
+          "query": "",
+          "launchMode": "default",
+          "scene": null
+        },
+        {
           "name": "message",
           "pathName": "pages/message/index",
           "query": "",

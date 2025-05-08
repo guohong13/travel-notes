@@ -1,6 +1,7 @@
 import Message from 'tdesign-miniprogram/message/index';
 import request from '~/api/request';
 
+
 // 获取应用实例
 // const app = getApp()
 
@@ -85,7 +86,7 @@ Page({
       });
   },
   onTapCard(e) {
-    const travelNote = e.currentTarget.dataset.item; // 假设你在卡片上绑定了data-item属性
+    const travelNote = e.currentTarget.dataset.item; 
     wx.navigateTo({
       url: `/pages/details/details?travelNote=${encodeURIComponent(JSON.stringify(travelNote))}`
     });

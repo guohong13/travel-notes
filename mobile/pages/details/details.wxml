@@ -27,7 +27,7 @@
     <text>{{travelNote.content}}</text>
   </view>
   <!-- 底部导航栏 -->
-  <view class="bottom-nav" style="height: 95rpx; display: flex; box-sizing: border-box; left: 0rpx; top: 1485rpx">
+  <view class="bottom-nav">
     <t-button
       theme="text"
       icon="heart"

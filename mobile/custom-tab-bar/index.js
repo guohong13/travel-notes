@@ -24,57 +24,58 @@ Component({
   },
   lifetimes: {
     ready() {
+      this.updateTabBar();
+    },
+  },
+  pageLifetimes: {
+    show() {
+      // 每次页面显示时更新tabBar状态
+      this.updateTabBar();
+    }
+  },
+  methods: {
+    // 新增更新tabBar状态的方法
+    updateTabBar() {
       const pages = getCurrentPages();
       const curPage = pages[pages.length - 1];
       if (curPage) {
         const nameRe = /pages\/(\w+)\/index/.exec(curPage.route);
-        if (nameRe === null) return;
-        if (nameRe[1] && nameRe) {
+        if (nameRe && nameRe[1]) {
           this.setData({
-            value: nameRe[1],
+            value: nameRe[1]
           });
         }
       }
     },
-  },
-  methods: {
     handleChange(e) {
-    const { value } = e.detail;
-    // wx.switchTab({ url: `/pages/${value}/index` });
-    if (value === 'release') {
-      if (!this.data.isLoggedIn) {
-        wx.showModal({
-          title: '提示',
-          content: '你还未登录，是否现在进行登录？',
-          success: (res) => {
-            if (res.confirm) {
-              wx.navigateTo({
-                url: '/pages/login/login' 
-              });
-            }
-            else if (res.cancel) {
-                this.setData({
-                    value: 'home' 
-                }, () => {
-                    wx.switchTab({
-                        url: '/pages/home/index' 
-                    });
+      const { value } = e.detail;
+      
+      if (value === 'release') {
+        if (!this.data.isLoggedIn) {
+          wx.showModal({
+            title: '提示',
+            content: '你还未登录，是否现在进行登录？',
+            success: (res) => {
+              if (res.confirm) {
+                wx.navigateTo({
+                  url: '/pages/login/login' 
                 });
-            }}
-        });
-      } else {
-        // 已登录，可进行发布相关操作
-        console.log('用户已登录，可进行发布操作');
-        this.setData({
-            value
+              } else if (res.cancel) {
+                // 取消登录时，保持当前页面状态
+                this.updateTabBar();
+              }
+            }
           });
+        } else {
+          this.setData({ value });
           wx.switchTab({ url: `/pages/${value}/index` });
+          this.updateTabBar();
+        }
+      } else {
+        this.setData({ value });
+        wx.switchTab({ url: `/pages/${value}/index` });
+        this.updateTabBar();
       }
-    } else {
-      this.setData({
-        value
-      });
-      wx.switchTab({ url: `/pages/${value}/index` });
-    }
     },
-}});
+  }
+});

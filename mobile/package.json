@@ -18,6 +18,7 @@
   "license": "MIT",
   "description": "a start-kit for wechat miniprogram powerby TDesign miniprogram",
   "dependencies": {
+    "axios": "^1.9.0",
     "tdesign-miniprogram": "^1.8.6"
   },
   "devDependencies": {

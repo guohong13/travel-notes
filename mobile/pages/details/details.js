@@ -1,3 +1,5 @@
+// import { CubeTextureLoader } from "XrFrame/loader";
+
 // pages/details.js
 Page({
 
@@ -29,11 +31,11 @@ Page({
     const travelNote = JSON.parse(travelNoteStr);
     
     // 打印图片路径进行调试
-    travelNote.mediaList.forEach(item => {
-        if (item.type === 'image') {
-            console.log('图片路径:', item.url);
-        }
-    });
+    // travelNote.mediaList.forEach(item => {
+    //     if (item.type === 'image') {
+    //         console.log('图片路径:', item.url);
+    //     }
+    // });
     // 更新页面数据
     this.setData({
       travelNote
@@ -91,7 +93,8 @@ Page({
     const currentImage = this.data.travelNote.mediaList[this.data.currentIndex].url;
     // 过滤出 mediaList 中的图片链接
     const imageUrls = this.data.travelNote.mediaList.filter(item => item.type === 'image').map(item => item.url);
-    console.log('图片路径:', currentImage);
+    console.log('imageUrls:', imageUrls);
+    console.log('currentImage:', currentImage);
     wx.previewImage({
       urls: imageUrls,
       current: currentImage,
@@ -99,9 +102,15 @@ Page({
   },
   onVideoTap() {
     const currentVideo = this.data.travelNote.mediaList[this.data.currentIndex].url;
-    wx.navigateTo({
-      url: `/pages/videoPlayer/videoPlayer?url=${currentVideo}`
-    });
+    wx.previewMedia({
+        current: 0, // 当前显示的视频序号，默认为0
+        sources: [
+          {
+            url: currentVideo, // 需要预览的视频链接
+            type: 'video' // 明确指定类型为视频
+          }
+        ]
+      })      
   },
   /**
    * 用户点击右上角分享

@@ -5,11 +5,16 @@ import homeMock from './home/index';
 import searchMock from './search/index';
 import dataCenter from './dataCenter/index';
 import my from './my/index';
+import mynotes from './mynotes/index';
 
 export default () => {
   // 在这里添加新的mock数据
-  const mockData = [...loginMock, ...homeMock, ...searchMock, ...dataCenter, ...my];
+  const mockData = [...loginMock, ...homeMock, ...searchMock, ...dataCenter, ...my, ...mynotes];
   mockData.forEach((item) => {
-    Mock.mock(item.path, { code: 200, success: true, data: item.data });
+    Mock.mock(item.path, {
+      code: 200,
+      message: '请求成功',
+      data: item.data
+    });
   });
 };
