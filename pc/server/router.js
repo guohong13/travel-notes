@@ -1,11 +1,9 @@
-import express from "express";
-import jwt from "jsonwebtoken";
-import multer from "multer";
-import { db, jwtSecret } from "./config.js";
-import CryptoJS from "crypto-js";
-import bcrypt from "bcrypt";
-import verifyUserToken from "./verifyUserToken.js";
-
+const express = require("express");
+const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const bcrypt = require("bcrypt");
+const verifyUserToken = require("./middleware/userAuth");
+const { db, jwtSecret } = require("./config.js");
 const router = express.Router();
 
 // 文件上传配置
@@ -17,18 +15,6 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
-
-// 中间件：验证管理员 token
-function verifyAdminToken(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "未提供管理员 token" });
-  jwt.verify(token, jwtSecret, (err, decoded) => {
-    if (err || !decoded.isAdmin)
-      return res.status(403).json({ error: "无效的管理员 token" });
-    req.admin = decoded;
-    next();
-  });
-}
 
 /**
  * 用户注册接口
@@ -66,7 +52,7 @@ router.post("/users/register", (req, res) => {
 
     // 用户名不存在，执行插入操作
     const insertSql =
-      "INSERT INTO users (username, password, nickname, avatar_url) VALUES (?, ?, ?, ?)";
+      "INSERT INTO users (username, password_hash, nickname, avatar_url) VALUES (?, ?, ?, ?)";
     db.query(
       insertSql,
       [username, password, nickname, avatar_url],
@@ -78,7 +64,7 @@ router.post("/users/register", (req, res) => {
             data: null,
           });
         }
-        res.status(200).json({
+        res.status(201).json({
           code: 1,
           message: "注册成功",
           data: null,
@@ -95,8 +81,8 @@ router.post("/users/login", (req, res) => {
   const { username, password } = req.body;
 
   // 先查询数据库中是否已经存在该 username
-  const sql = "SELECT * FROM users WHERE username = ?";
-  db.query(sql, [username], (err, results) => {
+  const checkSql = "SELECT * FROM users WHERE username = ?";
+  db.query(checkSql, [username], (err, results) => {
     if (err) {
       return res.status(500).json({
         code: 0,
@@ -107,7 +93,7 @@ router.post("/users/login", (req, res) => {
 
     // 如果查询结果为空，说明用户名不存在
     if (results.length === 0) {
-      return res.status(400).json({
+      return res.status(401).json({
         code: 0,
         message: "登录失败，用户名不存在",
         data: null,
@@ -137,7 +123,7 @@ router.post("/users/login", (req, res) => {
       const token = jwt.sign({ id: user.id }, jwtSecret, {
         expiresIn: "7d",
       });
-      res.status(200).json({
+      res.status(201).json({
         code: 1,
         message: "登录成功",
         data: { token },
@@ -149,10 +135,11 @@ router.post("/users/login", (req, res) => {
 /**
  * 获取用户信息接口
  */
-router.get("/users/me", verifyUserToken, (req, res) => {
-  const sql =
+router.get("/users/profile", verifyUserToken, (req, res) => {
+  const userId = req.user.id;
+  const checkSql =
     "SELECT id, username, nickname, avatar_url FROM users WHERE id = ?";
-  db.query(sql, [req.user.id], (err, results) => {
+  db.query(checkSql, [userId], (err, results) => {
     if (err) {
       return res.status(500).json({
         code: 0,
@@ -175,123 +162,419 @@ router.get("/users/me", verifyUserToken, (req, res) => {
   });
 });
 
-// 发布游记
+/**
+ * 用户发布游记接口
+ */
 router.post(
-  "/diaries",
+  "/notes",
   verifyUserToken,
   upload.fields([
-    { name: "cover_image", maxCount: 1 },
     { name: "images", maxCount: 10 },
+    { name: "video", maxCount: 1 },
   ]),
-  (req, res) => {
-    const { title, content, video_url } = req.body;
-    const coverImage = req.files["cover_image"]?.[0]?.path;
-    const imagePaths = (req.files["images"] || []).map((f) => f.path);
-    const sql =
-      'INSERT INTO diaries (user_id, title, content, cover_image, video_url, status) VALUES (?, ?, ?, ?, ?, "pending")';
-    db.query(
-      sql,
-      [req.user.id, title, content, coverImage, video_url],
-      (err, results) => {
-        if (err) return res.status(500).json({ error: "发布失败" });
-        const diaryId = results.insertId;
-        if (imagePaths.length === 0) return res.json({ message: "发布成功" });
-        const sql2 = "INSERT INTO diary_images (diary_id, image_url) VALUES ?";
-        const values = imagePaths.map((p) => [diaryId, p]);
-        db.query(sql2, [values], (err2) => {
-          if (err2) return res.status(500).json({ error: "保存图片失败" });
-          res.json({ message: "发布成功" });
-        });
+  async (req, res) => {
+    const { title, content } = req.body;
+    const userId = req.user.id; // 从token中获取用户ID
+
+    // 获取图片和视频文件路径
+    const imagePaths = req.files["images"].map((f) => f.path);
+    const videoFile = (req.files["video"] || [])[0];
+    const video_url = videoFile ? videoFile.path : null;
+
+    // 校验请求体中游记标题和内容（非文件内容）
+    if (!title || !content) {
+      return res.status(400).json({
+        code: 0,
+        message: "标题和内容为必填项",
+        data: null,
+      });
+    }
+
+    // 开启事务
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 添加游记文本和视频数据
+      const addSql = `
+        INSERT INTO travel_notes (user_id, title, content, video_url, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
+        `;
+      const [results] = await connection.query(addSql, [
+        userId,
+        title,
+        content,
+        video_url,
+      ]);
+
+      // 获取游记表的主键id
+      const travelNotesId = results.insertId;
+
+      // 添加游记图片数据
+      if (imagePaths.length > 0) {
+        const values = imagePaths.map((image) => [travelNotesId, image, 0]);
+        const addSql2 =
+          "INSERT INTO note_images (travel_notes_id, image_url, is_deleted) VALUES ?";
+        await connection.query(addSql2, [values]);
       }
-    );
+
+      // 提交事务
+      await connection.commit();
+
+      return res.status(201).json({
+        code: 1,
+        message: "发布成功",
+        data: null,
+      });
+    } catch (transactionErr) {
+      // 回滚事务
+      await connection.rollback();
+      return res.status(500).json({
+        code: 0,
+        message: "发布失败",
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
   }
 );
 
-// 修改游记
-router.put("/diaries/:id", verifyUserToken, (req, res) => {
-  const { title, content, video_url } = req.body;
-  const sql =
-    'UPDATE diaries SET title = ?, content = ?, video_url = ?, status = "pending" WHERE id = ? AND user_id = ?';
-  db.query(
-    sql,
-    [title, content, video_url, req.params.id, req.user.id],
-    (err) => {
-      if (err) return res.status(500).json({ error: "更新失败" });
-      res.json({ message: "更新成功" });
-    }
-  );
-});
+/**
+ * 用户修改游记接口
+ */
+router.put(
+  "/notes/modify/:id",
+  verifyUserToken,
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "video", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    const { id } = req.params; //获取请求参数里的游记id
+    const { title, content } = req.body;
+    const userId = req.user.id;
 
-// 删除游记
-router.delete("/diaries/:id", verifyUserToken, (req, res) => {
-  const sql = "DELETE FROM diaries WHERE id = ? AND user_id = ?";
-  db.query(sql, [req.params.id, req.user.id], (err) => {
-    if (err) return res.status(500).json({ error: "删除失败" });
-    res.json({ message: "删除成功" });
-  });
-});
+    try {
+      // 验证游记归属权
+      const [existing] = await db
+        .promise()
+        .query(
+          "SELECT id, video_url FROM travel_notes WHERE id = ? AND user_id = ? AND is_deleted = 0",
+          [id, userId]
+        );
 
-// 获取当前用户游记
-router.get("/diaries/my", verifyUserToken, (req, res) => {
-  const sql = "SELECT * FROM diaries WHERE user_id = ?";
-  db.query(sql, [req.user.id], (err, results) => {
-    if (err) return res.status(500).json({ error: "获取失败" });
-    res.json(results);
-  });
-});
-
-// 获取游记详情
-router.get("/diaries/:id", (req, res) => {
-  const sql = "SELECT * FROM diaries WHERE id = ?";
-  db.query(sql, [req.params.id], (err, results) => {
-    if (err || results.length === 0)
-      return res.status(404).json({ error: "未找到游记" });
-    res.json(results[0]);
-  });
-});
-
-// 搜索游记
-router.get("/diaries", (req, res) => {
-  const { keyword = "", page = 1, size = 10 } = req.query;
-  const offset = (page - 1) * size;
-  const sql = "SELECT * FROM diaries WHERE title LIKE ? LIMIT ?, ?";
-  db.query(
-    sql,
-    [`%${keyword}%`, Number(offset), Number(size)],
-    (err, results) => {
-      if (err) return res.status(500).json({ error: "搜索失败" });
-      res.json(results);
-    }
-  );
-});
-
-// 管理员注册接口
-router.post("/admin/register", (req, res) => {
-  // 对密码进行哈希处理
-  const password_hash = CryptoJS.SHA256(password).toString();
-  // 检查用户名是否已存在
-  const checkQuery = "SELECT * FROM admin WHERE username =?";
-  db.query(checkQuery, [username], (checkError, checkResults) => {
-    if (checkError) {
-      console.error(checkError);
-      return res.status(500).json({ error: "服务端错误" });
-    }
-    if (checkResults.length > 0) {
-      return res.status(409).json({ error: "用户名已存在，请选择其他用户名" });
-    }
-    // 插入新管理员记录
-    const insertQuery =
-      "INSERT INTO 表名 (username, password_hash, role, created_at) VALUES (?,?, 'admin', NOW())";
-    db.query(insertQuery, [username, hashedPassword], (insertError) => {
-      if (insertError) {
-        console.error(insertError);
-        return res.status(500).json({ error: "服务端错误" });
+      if (!existing.length) {
+        return res.status(404).json({
+          code: 0,
+          message: "游记不存在或没有修改权限",
+          data: null,
+        });
       }
-      res.status(201).json({ message: "注册成功" });
+
+      // 开启事务
+      const connection = await db.promise().getConnection();
+      await connection.beginTransaction();
+
+      try {
+        // 更新主表数据
+        const updateFields = {
+          title,
+          content,
+          status: "pending",
+          updated_at: new Date(),
+        };
+
+        // 处理新上传视频
+        if (req.files["video"]) {
+          const videoFile = req.files["video"][0];
+          updateFields.video_url = videoFile.path;
+        }
+
+        await connection.query(
+          "UPDATE travel_notes SET ? WHERE id = ? AND is_deleted = 0",
+          [updateFields, id]
+        );
+
+        // 删除旧图片(逻辑删除)，添加新图片
+        if (req.files["images"]) {
+          await connection.query(
+            "UPDATE note_images SET is_deleted = 1 WHERE travel_notes_id = ? AND is_deleted = 0",
+            [id]
+          );
+          const values = req.files["images"].map((f) => [id, f.path, 0]);
+          await connection.query(
+            "INSERT INTO note_images (travel_notes_id, image_url, is_deleted) VALUES ?",
+            [values]
+          );
+        }
+
+        // 提交事务
+        await connection.commit();
+
+        return res.status(201).json({
+          code: 1,
+          message: "修改成功",
+          data: null,
+        });
+
+        // 回滚事务
+      } catch (transactionErr) {
+        await connection.rollback();
+        return res.status(500).json({
+          code: 0,
+          message: "修改失败",
+          data: null,
+        });
+      } finally {
+        connection.release();
+      }
+    } catch (err) {
+      return res.status(500).json({
+        code: 0,
+        message: "服务器内部错误",
+        data: null,
+      });
+    }
+  }
+);
+
+/**
+ * 用户删除游记接口(更新状态实现逻辑删除)
+ */
+router.delete("/notes/delete:id", verifyUserToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    // 开启事务
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 验证游记归属权
+      const [checkResult] = await connection.query(
+        `SELECT id FROM travel_notes WHERE id = ? AND user_id = ? AND is_deleted = 0`,
+        [id, userId]
+      );
+
+      if (checkResult.length === 0) {
+        return res.status(404).json({
+          code: 0,
+          message: "游记不存在或没有删除权限",
+          data: null,
+        });
+      }
+
+      // 标记游记为已删除
+      await connection.query(
+        `UPDATE travel_notes SET is_deleted = 1,updated_at = NOW() WHERE id = ? AND is_deleted = 0`,
+        [id]
+      );
+
+      // 删除游记图片
+      await connection.query(
+        `UPDATE note_images SET is_deleted = 1 WHERE travel_notes_id = ? AND is_deleted = 0`,
+        [id]
+      );
+
+      await connection.commit();
+
+      return res.json({
+        code: 1,
+        message: "删除成功",
+        data: null,
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      return res.status(500).json({
+        code: 0,
+        message: "删除失败",
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("数据库错误:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
     });
-  });
+  }
 });
 
+/**
+ * 获取游记详情接口
+ */
+router.get("/notes", async (req, res) => {
+  const querySql = `
+      SELECT 
+        tn.id,
+        tn.user_id,
+        tn.title,
+        tn.content,
+        tn.video_url,
+        tn.created_at,
+        tn.updated_at,
+        GROUP_CONCAT(ni.image_url) AS images
+      FROM travel_notes tn
+      LEFT JOIN note_images ni 
+        ON tn.id = ni.travel_notes_id 
+        AND ni.is_deleted = 0
+      WHERE tn.is_deleted = 0
+        AND tn.status = "approved"
+      GROUP BY tn.id
+      ORDER BY tn.created_at ASC
+      LIMIT 10
+    `;
+  try {
+    const [notes] = await db.promise().query(querySql);
+
+    // 格式化图片数据
+    const formatted = notes.map((note) => ({
+      ...note,
+      images: note.images.split(","),
+    }));
+
+    return res.status(201).json({
+      code: 1,
+      message: "请求成功",
+      data: formatted,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取用户游记详情接口
+ */
+router.get("/notes/user/:userId", verifyUserToken, async (req, res) => {
+  const { userId } = req.params;
+  const querySql = `
+      SELECT 
+        tn.id,
+        tn.user_id,
+        tn.title,
+        tn.content,
+        tn.video_url,
+        tn.status,
+        tn.created_at,
+        tn.updated_at,
+        GROUP_CONCAT(ni.image_url) AS images
+      FROM travel_notes tn
+      LEFT JOIN note_images ni 
+        ON tn.id = ni.travel_notes_id 
+        AND ni.is_deleted = 0
+      WHERE tn.is_deleted = 0
+        AND tn.user_id = ?
+      GROUP BY tn.id
+      ORDER BY tn.created_at ASC
+    `;
+  try {
+    const [notes] = await db.promise().query(querySql, [userId]);
+
+    // 格式化图片数据
+    const formatted = notes.map((note) => ({
+      ...note,
+      images: note.images.split(","),
+    }));
+
+    return res.status(200).json({
+      code: 1,
+      message: "请求成功",
+      data: formatted,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 用户搜索游记接口(允许未登入访问)
+ */
+router.get("/notes/search", async (req, res) => {
+  const { title, nickname } = req.query;
+
+  // 参数校验
+  if (!title && !nickname) {
+    return res.status(400).json({
+      code: 0,
+      message: "至少需要提供标题或用户昵称作为搜索条件",
+      data: null,
+    });
+  }
+
+  try {
+    let querySql = `
+      SELECT 
+        tn.id,
+        tn.user_id,
+        tn.title,
+        tn.video_url,
+        tn.created_at,
+        u.nickname,
+        GROUP_CONCAT(ni.image_url) AS images
+      FROM travel_notes tn
+      LEFT JOIN note_images ni 
+        ON tn.id = ni.travel_notes_id 
+        AND ni.is_deleted = 0
+      LEFT JOIN users u 
+        ON tn.user_id = u.id
+      WHERE tn.is_deleted = 0
+        AND tn.status = "approved"
+    `;
+
+    const conditions = [];
+    const params = [];
+
+    // 安全处理搜索条件
+    if (title) {
+      conditions.push("tn.title LIKE ?");
+      params.push(`%${title}%`);
+    }
+    if (nickname) {
+      conditions.push("u.nickname LIKE ?");
+      params.push(`%${nickname}%`);
+    }
+
+    querySql += ` AND ${conditions.join(" AND ")} 
+              GROUP BY tn.id
+              ORDER BY tn.created_at DESC`;
+
+    const [notes] = await db.promise().query(querySql, params);
+
+    // 格式化结果
+    const formatted = notes.map((note) => ({
+      ...note,
+      images: note.images.split(","),
+    }));
+
+    return res.status(200).json({
+      code: 1,
+      message: "搜索成功",
+      data: {
+        list: formatted,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
 // 管理员登录
 router.post("/admin/login", async (req, res) => {
   // const { username, password_hash } = req.body;
@@ -317,43 +600,4 @@ router.post("/admin/login", async (req, res) => {
   });
 });
 
-// 管理员获取待审核游记
-router.get("/admin/diaries", verifyAdminToken, (req, res) => {
-  const { status = "pending" } = req.query;
-  const sql = "SELECT * FROM diaries WHERE status = ?";
-  db.query(sql, [status], (err, results) => {
-    if (err) return res.status(500).json({ error: "获取失败" });
-    res.json(results);
-  });
-});
-
-// 管理员通过游记
-router.post("/admin/diaries/:id/approve", verifyAdminToken, (req, res) => {
-  const sql = 'UPDATE diaries SET status = "approved" WHERE id = ?';
-  db.query(sql, [req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: "审核失败" });
-    res.json({ message: "审核通过" });
-  });
-});
-
-// 管理员驳回游记
-router.post("/admin/diaries/:id/reject", verifyAdminToken, (req, res) => {
-  const { reason } = req.body;
-  const sql =
-    'UPDATE diaries SET status = "rejected", reject_reason = ? WHERE id = ?';
-  db.query(sql, [reason, req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: "驳回失败" });
-    res.json({ message: "已驳回" });
-  });
-});
-
-// 管理员删除游记
-router.delete("/admin/diaries/:id", verifyAdminToken, (req, res) => {
-  const sql = "DELETE FROM diaries WHERE id = ?";
-  db.query(sql, [req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: "删除失败" });
-    res.json({ message: "删除成功" });
-  });
-});
-
-export default router;
+module.exports = router;

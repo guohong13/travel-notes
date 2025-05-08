@@ -21,4 +21,4 @@ function verifyUserToken(req, res, next) {
     next();
   });
 }
-export default verifyUserToken;
+module.exports = verifyUserToken;

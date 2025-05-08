@@ -1,6 +1,6 @@
 // 数据库相关配置
 
-import mysql from "mysql2";
+const mysql = require("mysql2");
 
 const db = mysql.createPool({
   host: "localhost",
@@ -11,4 +11,4 @@ const db = mysql.createPool({
 
 const jwtSecret = "cughpscil";
 
-export default { db, jwtSecret };
+module.exports = { db, jwtSecret };
