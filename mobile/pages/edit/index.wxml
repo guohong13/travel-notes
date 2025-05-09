@@ -40,7 +40,7 @@
     </view>
   </view>
 
-  <view class="bottom-buttons">
+  <view class="bottom-buttons" style="height: 189rpx; display: flex; box-sizing: border-box; left: 0rpx; top: 1445rpx">
     <t-button theme="default" block class="cancel-btn" bind:tap="onCancel">取消</t-button>
     <t-button theme="primary" block class="save-btn" bind:tap="onSave">保存</t-button>
   </view>

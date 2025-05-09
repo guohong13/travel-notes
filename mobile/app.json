@@ -5,7 +5,8 @@
     "pages/release/index",
     "pages/mynotes/index",
     "pages/video-player/index",
-    "pages/edit/index"
+    "pages/edit/index",
+    "pages/login/index"
   ],
   "usingComponents": {
     "t-toast": "tdesign-miniprogram/toast/toast"
@@ -28,11 +29,10 @@
       ]
     },
     {
-      "root": "pages/login",
-      "name": "login",
+      "root": "pages/login/register",
+      "name": "register",
       "pages": [
-        "login",
-        "register/index"
+        "index"
       ]
     },
     {

@@ -48,8 +48,8 @@ Page({
   },
 
   goToPublish() {
-    wx.navigateTo({
-      url: '/pages/release/index'
+    wx.switchTab({
+      url: '/pages/release/index',
     });
   },
 

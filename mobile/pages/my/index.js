@@ -71,7 +71,7 @@ Page({
 
   onLogin(e) {
     wx.navigateTo({
-      url: '/pages/login/login',
+      url: '/pages/login/index',
     });
   },
 

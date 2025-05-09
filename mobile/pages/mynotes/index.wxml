@@ -14,7 +14,7 @@
       暂无游记，快去发布吧！
     </view>
   </view>
-  <view class="publish-btn" style="position: fixed; left: 368rpx; top: 1468rpx; height: 83rpx; display: block; box-sizing: border-box">
+  <view class="publish-btn">
     <t-button theme="primary" icon="add" bind:tap="goToPublish">发布游记</t-button>
   </view>
 </view>

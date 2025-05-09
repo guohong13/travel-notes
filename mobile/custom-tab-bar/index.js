@@ -16,7 +16,7 @@ Component({
       },
       {
         icon: 'user',
-        value: 'my',
+        value: 'login',
         label: '我的',
       },
     ],
@@ -50,7 +50,7 @@ Component({
     handleChange(e) {
       const { value } = e.detail;
       
-      if (value === 'release') {
+      if (value === 'release' || value === 'login') {
         if (!this.data.isLoggedIn) {
           wx.showModal({
             title: '提示',
@@ -58,7 +58,7 @@ Component({
             success: (res) => {
               if (res.confirm) {
                 wx.navigateTo({
-                  url: '/pages/login/login' 
+                  url: '/pages/login/index' 
                 });
               } else if (res.cancel) {
                 // 取消登录时，保持当前页面状态
