@@ -1,0 +1,29 @@
+<view class="travel-note-card">
+  <!-- 卡片左侧：游记首图封面 -->
+  <view class="card-left">
+    <image src="{{travelNote.coverImage}}" mode="aspectFill"></image>
+  </view>
+  <!-- 卡片右侧：标题、内容和按钮 -->
+  <view class="card-right">
+    <!-- 标题 -->
+    <view class="card-title">
+      <text>{{travelNote.title}}</text>
+    </view>
+    <!-- 部分内容 -->
+    <view class="card-content">
+      <text>{{travelNote.content.slice(0, 50)}}{{travelNote.content.length > 50 ? '...' : ''}}</text>
+    </view>
+    <!-- 底部信息和按钮 -->
+    <view class="card-bottom">
+      <!-- 审核状态 -->
+      <view class="card-status">
+        <text>{{travelNote.status}}</text>
+      </view>
+      <!-- 操作按钮 -->
+      <view class="card-buttons">
+        <t-button theme="default" size="small" bindtap="onDelete">删除</t-button>
+        <t-button theme="primary" size="small" bindtap="onEdit">编辑</t-button>
+      </view>
+    </view>
+  </view>
+</view>

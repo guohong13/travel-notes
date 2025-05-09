@@ -1,0 +1,54 @@
+<t-navbar title="发布游记" left-arrow bind:go-back="onBackToHome"></t-navbar>
+<view class="page" style="width: 772rpx; display: block; box-sizing: border-box; height: 1591rpx">
+  <view class="release-container">
+    <view class="upload box" style="height: 224rpx; display: block; box-sizing: border-box; left: 0rpx; top: 0rpx">
+      <t-upload 
+        t-class="upload-class" 
+        media-type="{{['image', 'video']}}" 
+        files="{{originFiles}}" 
+        gridConfig="{{gridConfig}}" 
+        bind:success="handleSuccess" 
+        bind:remove="handleRemove"
+        bind:preview="handlePreview"
+        max="9"
+        config="{{config}}"
+        theme="image"
+        imageMode="aspectFill"
+        showUploadProgress="{{true}}"
+      />
+    </view>
+    <view class="desc box" style="height: 622rpx; display: flex; box-sizing: border-box">
+      <view class="desc-label">游记标题</view>
+      <t-textarea 
+        t-class="desc-class" 
+        t-class-textarea="placeholder-class" 
+        placeholder="分享你的旅行新鲜事" 
+        maxlength="12" 
+        disableDefaultPadding="{{true}}" 
+        indicator 
+        value="{{title}}"
+        bind:change="onTitleInput"
+      />
+    </view>
+    <view class="content box" style="height: 622rpx; display: flex; box-sizing: border-box">
+      <view class="content-label">游记内容</view>
+      <t-textarea 
+        t-class="content-class" 
+        t-class-textarea="placeholder-class" 
+        placeholder="分享你的旅行故事..." 
+        maxlength="2000" 
+        disableDefaultPadding="{{true}}" 
+        indicator 
+        value="{{content}}"
+        bind:change="onContentInput"
+      />
+    </view>
+    <view class="location box" style="height: 108rpx; display: block; box-sizing: border-box">
+      <t-cell title="所在位置" hover arrow leftIcon="location" bindtap="gotoMap" note="{{locationName || '点击选择位置'}}" />
+    </view>
+    <view class="btngroup box" style="position: fixed; left: 0rpx; top: 1300rpx; height: 149rpx; display: flex; box-sizing: border-box">
+      <t-button t-class="btn-class" theme="light" icon="file-copy" content="存草稿" size="large" bindtap="saveDraft"></t-button>
+      <t-button t-class="btn-class" theme="primary" icon="upload" content="发布" size="large" bindtap="release"></t-button>
+    </view>
+  </view>
+</view>

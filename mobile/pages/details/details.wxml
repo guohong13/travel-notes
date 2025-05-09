@@ -1,0 +1,64 @@
+<t-navbar title="游记详情" left-arrow />
+<view class="detail-container" style="height: 1000rpx; display: block; box-sizing: border-box">
+  <!-- 作者信息 -->
+  <view class="author-info">
+    <image class="avatar" src="{{travelNote.avatar}}" mode="aspectFill"></image>
+    <text class="author-nickname">{{travelNote.nickname}}</text>
+  </view>
+  <!-- <image class="cover-image" src="{{travelNote.mediaList[0].url}}" mode="aspectFill" style="width: 750rpx; height: 820rpx; display: inline-block; box-sizing: border-box"></image> -->
+
+    <!-- 图片和视频区域 -->
+   <swiper class="media-swiper" current="{{currentIndex}}" bindchange="onSwiperChange" >
+    <block wx:for="{{travelNote.mediaList}}" wx:key="index">
+      <swiper-item>
+        <block wx:if="{{item.type === 'video'}}">
+          <video src="{{item.url}}" bindtap="onVideoTap" object-fit="cover"></video>
+        </block>
+        <block wx:else>
+          <image class="media-image" src="{{item.url}}" mode="aspectFill" bindtap="onImageTap"></image>
+        </block>
+      </swiper-item>
+    </block>
+  </swiper>
+  <!-- 游记标题 -->
+  <text class="title">{{travelNote.desc}}</text>
+  <!-- 游记内容 -->
+  <view class="content">
+    <text>{{travelNote.content}}</text>
+  </view>
+  <!-- 底部导航栏 -->
+  <view class="bottom-nav">
+    <t-button
+      theme="text"
+      icon="heart"
+      bind:click="onLikeTap"
+    >
+      {{likeCount}}
+    </t-button>
+    <t-button
+      theme="text"
+      icon="star"
+      bind:click="onCollectTap"
+    >
+      收藏
+    </t-button>
+    <t-button
+      theme="text"
+      icon="chat-bubble"
+      bind:click="onCommentTap"
+    >
+      评论
+    </t-button>
+  </view>
+
+  <!-- 评论输入框，默认隐藏 -->
+  <view class="comment-input" hidden="{{!isCommentInputShow}}">
+    <t-input
+      placeholder="请输入评论内容"
+      bind:input="onCommentInput"
+      value="{{commentContent}}"
+    ></t-input>
+    <t-button bind:click="onSubmitComment">提交</t-button>
+    <t-button bind:click="onCancelComment">取消</t-button>
+  </view>
+</view>

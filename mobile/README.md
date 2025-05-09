@@ -1,50 +1,70 @@
-# Welcome to your Expo app 👋
+# TDesign 通用页面模板
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+基于 TDesign 打造的通用页面模板，包含通用的登陆注册、个人中心、设置中心、信息流等等功能。
 
-## Get started
+## 模版功能预览
 
-1. Install dependencies
+### 首页
 
-   ```bash
-   npm install
-   ```
+<div style="display: flex">
+  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/home-1.png">
+  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/home-2.png">
+</div>
 
-2. Start the app
+### 信息发布
 
-   ```bash
-   npx expo start
-   ```
+<img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/publish-1.png">
 
-In the output, you'll find options to open the app in a
+### 搜索页
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+<img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/search-1.png">
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### 个人中心
+<div style="display: flex">
+  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/user-1.png">
+  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/user-2.png">
+  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/user-3.png">
+</div>
 
-## Get a fresh project
 
-When you're ready, run:
+### 设置中心
+
+<img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/setting-1.png">
+
+### 消息中心
+
+<img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/message-1.png">
+
+
+## 开发预览
+### 目录结构（TODO: 生成目录结构树）
+
+
+### 在开发者工具中预览
 
 ```bash
-npm run reset-project
+# 安装项目依赖
+npm install
+
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+打开[微信开发者工具](https://mp.weixin.qq.com/debug/wxadoc/dev/devtools/download.html)，导入整个项目，构建 npm 包，就可以预览示例了。
 
-## Learn more
+### 基础库版本
 
-To learn more about developing your project with Expo, look at the following resources:
+最低基础库版本`^2.6.5`
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Join the community
+## 贡献成员
 
-Join our community of developers creating universal apps.
+<a href="https://github.com/TDesignOteam/tdesign-miniprogram-starter/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=TDesignOteam/tdesign-miniprogram-starter" />
+</a>
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 反馈
+
+有任何问题，建议通过 [Github issues](https://github.com/TDesignOteam/tdesign-miniprogram-starter/issues) 反馈。
+
+## 开源协议
+
+TDesign 遵循 [MIT 协议](https://github.com/TDesignOteam/tdesign-miniprogram-starter/blob/main/LICENSE)。

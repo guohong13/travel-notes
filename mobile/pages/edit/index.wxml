@@ -1,0 +1,47 @@
+<!-- pages/edit/index.wxml -->
+<t-navbar title="编辑游记" left-arrow />
+<view class="container">
+  <view class="content">
+    <view class="image-upload">
+      <t-upload
+        mediaType="{{['image']}}"
+        files="{{images}}"
+        bind:success="onUploadSuccess"
+        bind:remove="onUploadRemove"
+        bind:click="onUploadClick"
+        max="{{9}}"
+        gridConfig="{{gridConfig}}"
+      />
+    </view>
+
+    <t-input
+      value="{{title}}"
+      placeholder="请输入标题"
+      bind:change="onTitleInput"
+      class="title-input"
+    />
+    
+    <t-textarea
+      value="{{content}}"
+      placeholder="请输入内容"
+      bind:change="onContentInput"
+      class="content-input"
+      maxlength="500"
+      indicator
+    />
+    
+    <view class="location-input" bindtap="chooseLocation">
+      <t-input
+        value="{{location}}"
+        placeholder="请输入地点"
+        readonly
+        suffixIcon="location"
+      />
+    </view>
+  </view>
+
+  <view class="bottom-buttons">
+    <t-button theme="default" block class="cancel-btn" bind:tap="onCancel">取消</t-button>
+    <t-button theme="primary" block class="save-btn" bind:tap="onSave">保存</t-button>
+  </view>
+</view> 
