@@ -22,13 +22,15 @@ Page({
       videoSize: 50,
       videoQuality: 'medium',
       sizeType: ['original', 'compressed'],
-      extension: ['.mp4', '.avi']
+      extension: ['.mp4', '.avi', '.mov']
     },
+    hasVideo: false,
     location: null,
     address: '',
     locationName: '',
     title: '',
     content: '',
+    tempVideoUrl: '',
   },
 
   // 监听标题输入
@@ -108,13 +110,66 @@ Page({
     });
   },
 
+  // 生成视频缩略图
+  async generateVideoThumbnail(file) {
+    return new Promise((resolve, reject) => {
+      // 创建一个临时的video标签来获取视频信息
+      const videoContext = wx.createVideoContext('tempVideo');
+      const videoUrl = file.url || file.tempFilePath;
+      
+      // 设置视频源
+      this.setData({
+        tempVideoUrl: videoUrl
+      }, () => {
+        // 等待视频加载
+        setTimeout(() => {
+          // 获取视频信息
+          wx.getVideoInfo({
+            src: videoUrl,
+            success: (res) => {
+              resolve({
+                ...file,
+                thumb: res.thumbTempFilePath,
+                thumbUrl: res.thumbTempFilePath,
+                duration: res.duration,
+                width: res.width,
+                height: res.height
+              });
+            },
+            fail: (err) => {
+              console.error('获取视频信息失败：', err);
+              // 如果获取视频信息失败，使用默认缩略图
+              resolve({
+                ...file,
+                thumb: '/assets/images/video-placeholder.png', // 确保这个路径有一个默认的视频缩略图
+                thumbUrl: '/assets/images/video-placeholder.png',
+                duration: 0,
+                width: 0,
+                height: 0
+              });
+            }
+          });
+        }, 100);
+      });
+    });
+  },
+
   // 处理视频文件
   async processVideoFile(videoFile) {
     try {
-      // 压缩视频
-      const compressedFile = await this.compressVideo(videoFile);
-      // 生成缩略图
-      const processedFile = await this.generateVideoThumbnail(compressedFile);
+      // 检查文件格式
+      const filePath = videoFile.tempFilePath || videoFile.url;
+      const isMov = filePath.toLowerCase().endsWith('.mov');
+      
+      let processedFile;
+      if (isMov) {
+        // 对于MOV格式，直接使用原文件，不进行压缩
+        processedFile = await this.generateVideoThumbnail(videoFile);
+      } else {
+        // 对于其他格式，进行压缩
+        const compressedFile = await this.compressVideo(videoFile);
+        processedFile = await this.generateVideoThumbnail(compressedFile);
+      }
       
       const newFile = {
         ...processedFile,
@@ -123,7 +178,8 @@ Page({
         name: videoFile.tempFilePath.split('/').pop() || '视频文件',
         size: processedFile.size || videoFile.size || 0,
         url: processedFile.url || videoFile.tempFilePath,
-        thumb: processedFile.thumb || videoFile.thumbTempFilePath
+        thumb: processedFile.thumb,
+        thumbUrl: processedFile.thumb
       };
 
       // 更新文件列表
@@ -131,7 +187,9 @@ Page({
       const updatedFiles = [newFile, ...originFiles];
       
       this.setData({
-        originFiles: updatedFiles
+        originFiles: updatedFiles,
+        hasVideo: true,
+        tempVideoUrl: '' // 清除临时视频URL
       });
 
       wx.showToast({
@@ -174,28 +232,6 @@ Page({
     });
   },
 
-  // 生成视频缩略图
-  async generateVideoThumbnail(file) {
-    return new Promise((resolve, reject) => {
-      wx.getVideoInfo({
-        src: file.url || file.tempFilePath,
-        success: (res) => {
-          resolve({
-            ...file,
-            thumb: res.thumbTempFilePath,
-            duration: res.duration,
-            width: res.width,
-            height: res.height
-          });
-        },
-        fail: (err) => {
-          console.error('获取视频信息失败：', err);
-          resolve(file);
-        }
-      });
-    });
-  },
-
   async handleSuccess(e) {
     const { files } = e.detail;
     console.log('上传的文件：', files);
@@ -203,23 +239,44 @@ Page({
     // 处理文件
     const processFiles = async () => {
       const validFiles = [];
+      let hasNewVideo = false;
       
       for (const file of files) {
         if (file.type === 'video') {
-          const isValid = file.url.endsWith('.mp4') || file.url.endsWith('.avi');
-          if (!isValid) {
+          // 检查是否已经有视频
+          if (this.data.hasVideo) {
             wx.showToast({
-              title: '仅支持mp4和avi格式',
+              title: '只能上传一个视频',
               icon: 'none',
               duration: 2000
             });
             continue;
           }
 
-          // 压缩视频
-          const compressedFile = await this.compressVideo(file);
-          // 生成缩略图
-          const processedFile = await this.generateVideoThumbnail(compressedFile);
+          const filePath = file.url || file.tempFilePath;
+          const isMov = filePath.toLowerCase().endsWith('.mov');
+          const isValid = filePath.toLowerCase().endsWith('.mp4') || 
+                         filePath.toLowerCase().endsWith('.avi') || 
+                         isMov;
+
+          if (!isValid) {
+            wx.showToast({
+              title: '仅支持mp4、avi和mov格式',
+              icon: 'none',
+              duration: 2000
+            });
+            continue;
+          }
+
+          let processedFile;
+          if (isMov) {
+            // 对于MOV格式，直接使用原文件，不进行压缩
+            processedFile = await this.generateVideoThumbnail(file);
+          } else {
+            // 对于其他格式，进行压缩
+            const compressedFile = await this.compressVideo(file);
+            processedFile = await this.generateVideoThumbnail(compressedFile);
+          }
           
           validFiles.push({
             ...processedFile,
@@ -227,7 +284,11 @@ Page({
             status: 'done',
             name: file.name || '视频文件',
             size: processedFile.size || 0,
+            url: processedFile.url || file.url,
+            thumb: processedFile.thumb,
+            thumbUrl: processedFile.thumb
           });
+          hasNewVideo = true;
         } else {
           validFiles.push({
             ...file,
@@ -235,7 +296,8 @@ Page({
             status: 'done',
             name: file.name || '图片文件',
             size: file.size || 0,
-            url: file.url
+            url: file.url,
+            thumbUrl: file.url
           });
         }
       }
@@ -243,6 +305,14 @@ Page({
       // 将视频文件放在最前面
       const videoFiles = validFiles.filter(file => file.type === 'video');
       const imageFiles = validFiles.filter(file => file.type === 'image');
+      
+      // 更新视频状态
+      if (hasNewVideo) {
+        this.setData({
+          hasVideo: true
+        });
+      }
+
       return [...videoFiles, ...imageFiles];
     };
 
@@ -283,6 +353,15 @@ Page({
   handleRemove(e) {
     const { index } = e.detail;
     const { originFiles } = this.data;
+    const removedFile = originFiles[index];
+    
+    // 如果删除的是视频，更新视频状态
+    if (removedFile.type === 'video') {
+      this.setData({
+        hasVideo: false
+      });
+    }
+    
     originFiles.splice(index, 1);
     this.setData({
       originFiles,

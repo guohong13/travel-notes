@@ -17,7 +17,7 @@
         showUploadProgress="{{true}}"
       />
     </view>
-    <view class="desc box" style="height: 622rpx; display: flex; box-sizing: border-box">
+    <view class="desc box" style="height: 108rpx; display: flex; box-sizing: border-box">
       <view class="desc-label">游记标题</view>
       <t-textarea 
         t-class="desc-class" 

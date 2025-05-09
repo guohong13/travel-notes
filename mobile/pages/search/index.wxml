@@ -34,23 +34,6 @@
         </view>
       </view>
     </view>
-    <view class="popular-wrap">
-      <view class="search-header">
-        <text class="search-title">搜索发现</text>
-      </view>
-      <view class="search-content">
-        <view
-          class="search-item"
-          hover-class="hover-history-item"
-          wx:for="{{popularWords}}"
-          bind:tap="handlePopularTap"
-          data-index="{{index}}"
-          wx:key="*this"
-        >
-          <t-tag class="popular-item margin-12" max-width="{{343}}" variant="light" icon="search"> {{item}} </t-tag>
-        </view>
-      </view>
-    </view>
   </view>
   <t-dialog
     visible="{{dialogShow}}"

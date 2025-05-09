@@ -11,6 +11,27 @@
           "launchMode": "default"
         },
         {
+          "name": "pages/login/register/index",
+          "pathName": "pages/login/register/index",
+          "query": "",
+          "launchMode": "default",
+          "scene": null
+        },
+        {
+          "name": "pages/edit/index",
+          "pathName": "pages/edit/index",
+          "query": "",
+          "launchMode": "default",
+          "scene": null
+        },
+        {
+          "name": "pages/mynotes/index",
+          "pathName": "pages/mynotes/index",
+          "query": "",
+          "launchMode": "default",
+          "scene": null
+        },
+        {
           "name": "pages/details/details",
           "pathName": "pages/details/details",
           "query": "",
@@ -33,7 +54,7 @@
         },
         {
           "name": "login",
-          "pathName": "pages/login/login",
+          "pathName": "pages/login/index",
           "query": "",
           "scene": null
         },
