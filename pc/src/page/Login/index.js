@@ -1,39 +1,89 @@
+// 登入页
+
 import React from "react";
 import "./index.scss";
-import { Button, Form, Input } from "antd";
+import { Button, Form, Input, Card, message } from "antd";
+import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+// import CryptoJS from "crypto-js";
 
 const Login = () => {
+  const [passwordVisible, setPasswordVisible] = React.useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
+  const navigate = useNavigate();
+  const onFinish = async (values) => {
+    try {
+      // 对密码进行哈希处理
+      // const password_hash = CryptoJS.SHA256(values.password).toString();
+      const response = await axios.post(
+        "http://localhost:3300/api/admin/login",
+        {
+          username: values.username,
+          password: values.password,
+          // password: password_hash,
+        }
+      );
+      // 保存 token 到 localStorage
+      localStorage.setItem("adminToken", response.data.token);
+      console.log("登录成功", response);
+      messageApi.success("登入成功");
+      setTimeout(() => {
+        navigate("/Audit");
+      }, 500);
+    } catch (error) {
+      if (error.response) {
+        const errorMessage = error.response.data.error;
+        messageApi.error(errorMessage);
+        console.log(errorMessage);
+      } else {
+        messageApi.error("网络错误，请检查网络连接");
+      }
+    }
+  };
   return (
     <div className="login">
+      {contextHolder}
       <Card className="login-container">
-        <img className="login-logo" src={logo} alt="" />
         {/* 登录表单 */}
-        <Form onFinish={onFinish} validateTrigger="onBlur">
+        <Form validateTrigger="onBlur" onFinish={onFinish}>
+          <h2>游记审核管理系统</h2>
+
           <Form.Item
-            name="mobile"
+            name="username"
             rules={[
               {
                 required: true,
-                message: "请输入手机号",
-              },
-              {
-                pattern: /^1[3-9]\d{9}$/,
-                message: "请输入正确的手机号格式",
+                message: "请输入用户名",
               },
             ]}
           >
-            <Input size="large" placeholder="请输入手机号" />
+            <Input size="large" placeholder="用户名" />
           </Form.Item>
           <Form.Item
-            name="code"
+            name="password"
             rules={[
               {
                 required: true,
-                message: "请输入验证码",
+                message: "请输入密码",
               },
             ]}
           >
-            <Input size="large" placeholder="请输入验证码" />
+            <Input.Password
+              size="large"
+              placeholder="密码"
+              iconRender={(visible) => {
+                const iconColor = "#a1a1a1";
+                if (visible) {
+                  return <EyeTwoTone twoToneColor={iconColor} />;
+                }
+                return <EyeInvisibleOutlined style={{ color: iconColor }} />;
+              }}
+              visibilityToggle={{
+                visible: passwordVisible,
+                onVisibleChange: setPasswordVisible,
+              }}
+            />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" size="large" block>
