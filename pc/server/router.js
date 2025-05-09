@@ -3,15 +3,28 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { db, jwtSecret } = require("./config");
 const router = express.Router();
+const rateLimit = require("express-rate-limit");
 const verifyUserToken = require("./middleware/userAuth");
 const verifyAdminToken = require("./middleware/adminAuth");
 const upload = require("./middleware/multerConfig");
 
+// 登录频率限制
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分钟
+  max: 5, // 最多5次尝试
+  message: {
+    code: 0,
+    message: "尝试登录次数过多，请15分钟后再试",
+    data: null,
+  },
+});
+
 /**
  * 用户注册接口
  */
-router.post("/users/register", (req, res) => {
+router.post("/users/register", async (req, res) => {
   const { username, password, nickname, avatar_url } = req.body;
+
   // 判断输入是否为空
   if (!username || !password) {
     return res.status(400).json({
@@ -21,16 +34,13 @@ router.post("/users/register", (req, res) => {
     });
   }
 
-  // 先查询数据库中是否已经存在该 username
-  const checkSql = "SELECT * FROM users WHERE username = ?";
-  db.query(checkSql, [username], (checkErr, checkResult) => {
-    if (checkErr) {
-      return res.status(500).json({
-        code: 0,
-        message: "数据库查询用户名时出错",
-        data: null,
-      });
-    }
+  try {
+    // 密码加密
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 先查询数据库中是否已经存在该 username
+    const checkSql = "SELECT * FROM users WHERE username = ?";
+    const [checkResult] = await db.promise().query(checkSql, [username]);
 
     // 如果查询结果不为空，说明用户名已存在
     if (checkResult.length > 0) {
@@ -44,43 +54,44 @@ router.post("/users/register", (req, res) => {
     // 用户名不存在，执行插入操作
     const insertSql =
       "INSERT INTO users (username, password_hash, nickname, avatar_url) VALUES (?, ?, ?, ?)";
-    db.query(
-      insertSql,
-      [username, password, nickname, avatar_url],
-      (insertErr) => {
-        if (insertErr) {
-          return res.status(500).json({
-            code: 0,
-            message: "注册失败",
-            data: null,
-          });
-        }
-        res.status(201).json({
-          code: 1,
-          message: "注册成功",
-          data: null,
-        });
-      }
-    );
-  });
+    await db
+      .promise()
+      .query(insertSql, [username, hashedPassword, nickname, avatar_url]);
+
+    res.status(201).json({
+      code: 1,
+      message: "注册成功",
+      data: null,
+    });
+  } catch (error) {
+    console.error("注册过程中出错:", error);
+    res.status(500).json({
+      code: 0,
+      message: "注册失败，请稍后再试",
+      data: null,
+    });
+  }
 });
 
 /**
  * 用户登录接口
  */
-router.post("/users/login", (req, res) => {
+router.post("/users/login", loginLimiter, async (req, res) => {
   const { username, password } = req.body;
 
-  // 先查询数据库中是否已经存在该 username
-  const checkSql = "SELECT * FROM users WHERE username = ?";
-  db.query(checkSql, [username], (err, results) => {
-    if (err) {
-      return res.status(500).json({
-        code: 0,
-        message: "数据库查询出错，登录失败",
-        data: null,
-      });
-    }
+  // 判断输入是否为空
+  if (!username || !password) {
+    return res.status(400).json({
+      code: 0,
+      message: "用户名、密码不能为空",
+      data: null,
+    });
+  }
+
+  try {
+    // 查询数据库中是否存在该用户名
+    const checkSql = "SELECT * FROM users WHERE username = ?";
+    const [results] = await db.promise().query(checkSql, [username]);
 
     // 如果查询结果为空，说明用户名不存在
     if (results.length === 0) {
@@ -91,36 +102,37 @@ router.post("/users/login", (req, res) => {
       });
     }
 
-    // 对用户名进行密码校验
     const user = results[0];
-    bcrypt.compare(password, user.password_hash, (compareErr, isMatch) => {
-      if (compareErr) {
-        return res.status(500).json({
-          code: 0,
-          message: "密码验证出错，登录失败",
-          data: null,
-        });
-      }
 
-      if (!isMatch) {
-        return res.status(400).json({
-          code: 0,
-          message: "用户名或密码错误",
-          data: null,
-        });
-      }
+    // 对密码进行校验
+    const isMatch = await bcrypt.compare(password, user.password_hash);
 
-      // 生成用户 token
-      const token = jwt.sign({ id: user.id }, jwtSecret, {
-        expiresIn: "7d",
+    if (!isMatch) {
+      return res.status(400).json({
+        code: 0,
+        message: "用户名或密码错误",
+        data: null,
       });
-      res.status(201).json({
-        code: 1,
-        message: "登录成功",
-        data: { token },
-      });
+    }
+
+    // 生成用户 token
+    const token = jwt.sign({ id: user.id }, jwtSecret, {
+      expiresIn: "7d",
     });
-  });
+
+    res.status(201).json({
+      code: 1,
+      message: "登录成功",
+      data: { token },
+    });
+  } catch (error) {
+    console.error("登录过程中出错:", error);
+    res.status(500).json({
+      code: 0,
+      message: "登录失败，请稍后再试",
+      data: null,
+    });
+  }
 });
 
 /**
@@ -215,7 +227,7 @@ router.post(
       return res.status(201).json({
         code: 1,
         message: "发布成功",
-        data: null,
+        data: insertId,
       });
     } catch (transactionErr) {
       // 回滚事务
@@ -429,7 +441,7 @@ router.get("/notes", async (req, res) => {
       images: note.images.split(","),
     }));
 
-    return res.status(201).json({
+    return res.status(200).json({
       code: 1,
       message: "请求成功",
       data: formatted,
@@ -595,6 +607,8 @@ router.post("/admin/login", (req, res) => {
 
     // 对用户名进行密码校验
     const admin = results[0];
+    console.log(password);
+    console.log(admin);
     bcrypt.compare(password, admin.password_hash, (compareErr, isMatch) => {
       if (compareErr) {
         return res.status(500).json({

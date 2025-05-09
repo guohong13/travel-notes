@@ -6,6 +6,7 @@ import { Button, Form, Input, Card, message } from "antd";
 import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+
 // import CryptoJS from "crypto-js";
 
 const Login = () => {
@@ -33,11 +34,10 @@ const Login = () => {
       }, 500);
     } catch (error) {
       if (error.response) {
-        const errorMessage = error.response.data.error;
+        const errorMessage = error.response.data.message;
         messageApi.error(errorMessage);
-        console.log(errorMessage);
       } else {
-        messageApi.error("网络错误，请检查网络连接");
+        messageApi.error("服务器网络错误");
       }
     }
   };
