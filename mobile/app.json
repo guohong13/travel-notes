@@ -75,7 +75,7 @@
         "text": "发布"
       },
       {
-        "pagePath": "pages/my/index",
+        "pagePath": "pages/mynotes/index",
         "text": "我的"
       }
     ]

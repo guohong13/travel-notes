@@ -1,5 +1,7 @@
 // pages/release/index.js
 
+import { publishNote, uploadFile, uploadFilesAndPublish } from '~/api/request';
+
 Page({
   /**
    * 页面的初始数据
@@ -10,6 +12,9 @@ Page({
       column: 4,
       width: 160,
       height: 160,
+      style: {
+        marginRight: '16rpx'
+      }
     },
     config: {
       count: 9,
@@ -18,7 +23,7 @@ Page({
       maxDuration: 60,
       camera: 'back',
       compressed: true,
-      maxCount: 9,
+      maxCount: 12,
       videoSize: 50,
       videoQuality: 'medium',
       sizeType: ['original', 'compressed'],
@@ -31,6 +36,20 @@ Page({
     title: '',
     content: '',
     tempVideoUrl: '',
+  },
+
+  onLoad() {
+    // 初始化数据
+    this.setData({
+      originFiles: [],
+      title: '',
+      content: '',
+      location: null,
+      locationName: '',
+      address: '',
+      hasVideo: false,
+      tempVideoUrl: ''
+    });
   },
 
   // 监听标题输入
@@ -51,12 +70,18 @@ Page({
   validateData() {
     const { originFiles, title, content } = this.data;
     
+    console.log('校验数据：', {
+      originFiles,
+      title,
+      content
+    });
+    
     // 检查是否上传了图片或视频
     if (!originFiles || originFiles.length === 0) {
       wx.showToast({
         title: '请上传图片或视频',
         icon: 'none',
-        duration: 2000
+        duration: 1500
       });
       return false;
     }
@@ -66,7 +91,7 @@ Page({
       wx.showToast({
         title: '请输入游记标题',
         icon: 'none',
-        duration: 2000
+        duration: 1500
       });
       return false;
     }
@@ -76,11 +101,12 @@ Page({
       wx.showToast({
         title: '请输入游记内容',
         icon: 'none',
-        duration: 2000
+        duration: 1500
       });
       return false;
     }
 
+    // 所有检查都通过
     return true;
   },
 
@@ -465,7 +491,7 @@ Page({
         wx.showToast({
           title: '选择位置失败',
           icon: 'none',
-          duration: 1500,
+          duration: 1000,
         });
       }
     });
@@ -492,19 +518,153 @@ Page({
       url: `/pages/home/index?oper=save`,
     });
   },
-  release() {
+  async release() {
+    // 校验数据
     if (!this.validateData()) {
       return;
     }
 
-    // 数据校验通过，继续发布流程
-    wx.reLaunch({
-      url: `/pages/home/index?oper=release`,
-    });
+    // 检查是否登录
+    const token = wx.getStorageSync('token');
+    if (!token) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'none',
+        duration: 1500,
+        success: () => {
+          setTimeout(() => {
+            wx.navigateTo({
+              url: '/pages/login/index'
+            });
+          }, 1500);
+        }
+      });
+      return;
+    }
+
+    const { title, content, originFiles, location, locationName, address } = this.data;
+
+    try {
+      wx.showLoading({
+        title: '发布中...',
+        mask: true
+      });
+
+      // 检查文件
+      if (!originFiles || originFiles.length === 0) {
+        throw new Error('请选择要上传的文件');
+      }
+
+      // 处理文件路径
+      const validFiles = originFiles.map(file => {
+        if (!file.url && !file.tempFilePath) {
+          throw new Error('文件路径无效');
+        }
+
+        return {
+          ...file,
+          tempFilePath: file.tempFilePath || file.url,
+          thumb: file.thumb || undefined
+        };
+      });
+
+      console.log('开始上传，数据：', {
+        title,
+        content,
+        filesCount: validFiles.length,
+        hasLocation: !!location,
+        files: validFiles.map(f => ({
+          type: f.type,
+          tempFilePath: f.tempFilePath,
+          hasThumb: !!f.thumb
+        }))
+      });
+
+      // 调用API上传文件并发布游记
+      const publishRes = await uploadFilesAndPublish({
+        files: validFiles,
+        title,
+        content,
+        location: location ? {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          name: locationName,
+          address: address
+        } : null,
+        token
+      });
+
+      wx.hideLoading();
+
+      if (publishRes.code === 200 || publishRes.code === 1) {
+        wx.showToast({
+          title: publishRes.message || '发布成功',
+          icon: 'success',
+          duration: 2000
+        });
+
+        // 延迟跳转到游记列表页
+        setTimeout(() => {
+          wx.switchTab({
+            url: '/pages/mynotes/index'
+          });
+        }, 2000);
+      } else {
+        throw new Error(publishRes.message || '发布失败');
+      }
+    } catch (error) {
+      console.error('发布失败：', error);
+      wx.hideLoading();
+      
+      if (error.message === '登录已过期，请重新登录') {
+        wx.showToast({
+          title: '登录已过期，请重新登录',
+          icon: 'none',
+          duration: 1500,
+          success: () => {
+            setTimeout(() => {
+              wx.navigateTo({
+                url: '/pages/login/index'
+              });
+            }, 1500);
+          }
+        });
+      } else {
+        wx.showToast({
+          title: error.message || '发布失败，请检查网络连接',
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    }
   },
   onBackToHome() {
     wx.switchTab({
       url: '/pages/home/index',
     });
-  }
+  },
+  onShow() {
+    // 检查登录状态
+    const token = wx.getStorageSync('token');
+    if (!token) {
+      wx.showToast({
+        title: '请先登录',
+        icon: 'none',
+        duration: 1500,
+        success: () => {
+          setTimeout(() => {
+            wx.navigateTo({
+              url: '/pages/login/index'
+            });
+          }, 1500);
+        }
+      });
+      return;
+    }
+
+    // 更新tabBar选中状态
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setTabBarValue('release');
+    }
+  },
 });

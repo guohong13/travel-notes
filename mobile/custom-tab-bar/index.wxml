@@ -1,5 +1,6 @@
-<t-tab-bar value="{{ value }}" theme="tag" split="{{ false }}" bind:change="handleChange">
-  <t-tab-bar-item icon="home" value="home">首页</t-tab-bar-item>
-  <t-tab-bar-item icon="add" value="release">发布</t-tab-bar-item>
-  <t-tab-bar-item icon="user" value="login">我的</t-tab-bar-item>
+<t-tab-bar value="{{ value }}" theme="tag" split="{{ false }}" bind:change="switchTab">
+  <t-tab-bar-item wx:for="{{ list }}" wx:key="value"
+    icon="{{ item.icon }}"
+    value="{{ item.value }}"
+  >{{ item.text }}</t-tab-bar-item>
 </t-tab-bar>

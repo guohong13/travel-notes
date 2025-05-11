@@ -1,3 +1,5 @@
+import { register } from '~/api/request';
+
 const app = getApp()
 
 Page({
@@ -6,7 +8,8 @@ Page({
     username: '',
     nickname: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    isSubmit: false
   },
 
   onLoad() {
@@ -54,59 +57,26 @@ Page({
       return
     }
 
+    if (password.length < 6) {
+      wx.showToast({
+        title: '密码长度不能少于6位',
+        icon: 'none'
+      })
+      return
+    }
+
     try {
-      // 检查用户名是否已存在
-      const checkUsernameRes = await wx.cloud.callFunction({
-        name: 'checkUsername',
-        data: { username }
-      })
-
-      if (checkUsernameRes.result.exists) {
-        wx.showToast({
-          title: '用户名已存在',
-          icon: 'none'
-        })
-        return
-      }
-
-      // 检查昵称是否已存在
-      const checkNicknameRes = await wx.cloud.callFunction({
-        name: 'checkNickname',
-        data: { nickname }
-      })
-
-      if (checkNicknameRes.result.exists) {
-        wx.showToast({
-          title: '昵称已被使用',
-          icon: 'none'
-        })
-        return
-      }
-
-      // 上传头像到云存储
-      let avatarFileID = ''
-      if (avatarUrl !== '/static/images/default-avatar.png') {
-        const uploadRes = await wx.cloud.uploadFile({
-          cloudPath: `avatars/${Date.now()}-${Math.random().toString(36).substr(2)}.${avatarUrl.match(/\.(\w+)$/)[1]}`,
-          filePath: avatarUrl
-        })
-        avatarFileID = uploadRes.fileID
-      }
-
       // 注册用户
-      const registerRes = await wx.cloud.callFunction({
-        name: 'register',
-        data: {
-          username,
-          nickname,
-          password,
-          avatarUrl: avatarFileID || '/static/images/default-avatar.png'
-        }
+      const res = await register({
+        username,
+        nickname,
+        password,
+        avatar_url: avatarUrl
       })
 
-      if (registerRes.result.success) {
+      if (res.code === 1) {
         wx.showToast({
-          title: '注册成功',
+          title: res.message || '注册成功',
           icon: 'success'
         })
         
@@ -115,7 +85,10 @@ Page({
           wx.navigateBack()
         }, 1500)
       } else {
-        throw new Error('注册失败')
+        wx.showToast({
+          title: res.message || '注册失败',
+          icon: 'none'
+        })
       }
     } catch (error) {
       console.error('注册失败：', error)

@@ -102,7 +102,7 @@
   "libVersion": "3.8.3",
   "projectname": "travel-notes1",
   "setting": {
-    "urlCheck": true,
+    "urlCheck": false,
     "coverView": true,
     "lazyloadPlaceholderEnable": false,
     "skylineRenderEnable": false,

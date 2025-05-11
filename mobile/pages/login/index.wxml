@@ -7,7 +7,7 @@
         <t-input
           label="账号"
           placeholder="请输入用户名"
-          value="{{passwordInfo.account}}"
+          value="{{passwordInfo.username}}"
           bindchange="onAccountChange"
         ></t-input>
         <t-input

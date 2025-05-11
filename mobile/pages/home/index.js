@@ -90,5 +90,11 @@ Page({
     wx.navigateTo({
       url: `/pages/details/details?travelNote=${encodeURIComponent(JSON.stringify(travelNote))}`
     });
+  },
+  onShow() {
+    // 更新tabBar选中状态
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setTabBarValue('home');
+    }
   }
 });

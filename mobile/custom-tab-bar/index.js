@@ -2,25 +2,27 @@ const app = getApp();
 
 Component({
   data: {
-    value: '', // 初始值设置为空，避免第一次加载时闪烁
-    list: [
-      {
-        icon: 'home',
-        value: 'home',
-        label: '首页',
-      },
-      {
-        icon: 'add',
-        value: 'release',
-        label: '发布',
-      },
-      {
-        icon: 'user',
-        value: 'login',
-        label: '我的',
-      },
-    ],
-    isLoggedIn: false // 定义 isLoggedIn
+    value: 'home', // 当前选中的值
+    color: "#7A7E83",
+    selectedColor: "#3cc51f",
+    list: [{
+      pagePath: "/pages/home/index",
+      icon: "home",
+      value: "home",
+      text: "首页"
+    }, {
+      pagePath: "/pages/release/index",
+      icon: "add",
+      value: "release",
+      text: "发布",
+      needLogin: true
+    }, {
+      pagePath: "/pages/mynotes/index",
+      icon: "user",
+      value: "mynotes",
+      text: "我的",
+      needLogin: true
+    }]
   },
   lifetimes: {
     ready() {
@@ -34,48 +36,75 @@ Component({
     }
   },
   methods: {
-    // 新增更新tabBar状态的方法
+    // 更新tabBar状态的方法
     updateTabBar() {
       const pages = getCurrentPages();
       const curPage = pages[pages.length - 1];
       if (curPage) {
-        const nameRe = /pages\/(\w+)\/index/.exec(curPage.route);
-        if (nameRe && nameRe[1]) {
+        const route = curPage.route;
+        const item = this.data.list.find(item => item.pagePath.includes(route));
+        if (item) {
           this.setData({
-            value: nameRe[1]
+            value: item.value
           });
         }
       }
     },
-    handleChange(e) {
-      const { value } = e.detail;
+    
+    async switchTab(e) {
+      const value = e.detail.value;
+      const item = this.data.list.find(item => item.value === value);
       
-      if (value === 'release' || value === 'login') {
-        if (!this.data.isLoggedIn) {
-          wx.showModal({
-            title: '提示',
-            content: '你还未登录，是否现在进行登录？',
-            success: (res) => {
-              if (res.confirm) {
-                wx.navigateTo({
-                  url: '/pages/login/index' 
-                });
-              } else if (res.cancel) {
-                // 取消登录时，保持当前页面状态
-                this.updateTabBar();
-              }
-            }
+      if (!item) {
+        console.error('未找到对应的tab项：', value);
+        return;
+      }
+
+      // 检查是否需要登录
+      if (item.needLogin) {
+        const token = wx.getStorageSync('token');
+        if (!token) {
+          // 保存当前选中状态
+          const currentValue = this.data.value;
+          
+          wx.showToast({
+            title: '请先登录',
+            icon: 'none',
+            duration: 1500
           });
-        } else {
-          this.setData({ value });
-          wx.switchTab({ url: `/pages/${value}/index` });
+          
+          setTimeout(() => {
+            wx.navigateTo({
+              url: '/pages/login/index',
+              success: () => {
+                // 恢复之前的选中状态
+                this.setData({
+                  value: currentValue
+                });
+              }
+            });
+          }, 1000);
+          return;
+        }
+      }
+
+      // 更新选中状态并跳转
+      this.setData({
+        value: value
+      });
+
+      wx.switchTab({
+        url: item.pagePath,
+        fail: (err) => {
+          console.error('跳转失败：', err);
+          // 跳转失败时恢复选中状态
           this.updateTabBar();
         }
-      } else {
-        this.setData({ value });
-        wx.switchTab({ url: `/pages/${value}/index` });
-        this.updateTabBar();
-      }
+      });
     },
+
+    setTabBarValue(value) {
+      this.setData({ value });
+    }
   }
 });

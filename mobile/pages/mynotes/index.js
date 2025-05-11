@@ -32,17 +32,64 @@ Page({
 
   async loadNotesList() {
     try {
-      const res = await request('/mynotes/list');
-      if (res.code === 200) {
-        this.setData({
-          notesList: res.data
+      const token = wx.getStorageSync('token');
+      if (!token) {
+        wx.redirectTo({
+          url: '/pages/login/index'
         });
+        return;
+      }
+
+      wx.showLoading({
+        title: '加载中...',
+        mask: true
+      });
+
+      const res = await request('/mynotes/list', {
+        method: 'GET',
+        header: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      wx.hideLoading();
+
+      if (res.code === 200 || res.code === 1) {
+        // 处理空数据的情况
+        const notesList = res.data || [];
+        this.setData({
+          notesList,
+          isEmpty: notesList.length === 0
+        });
+      } else if (res.code === 401 || res.code === 403) {
+        // token失效，需要重新登录
+        wx.removeStorageSync('token');
+        const app = getApp();
+        app.globalData.isLoggedIn = false;
+        
+        wx.showToast({
+          title: '登录已过期，请重新登录',
+          icon: 'none',
+          duration: 2000,
+          success: () => {
+            setTimeout(() => {
+              wx.redirectTo({
+                url: '/pages/login/index'
+              });
+            }, 2000);
+          }
+        });
+      } else {
+        throw new Error(res.message || '加载失败');
       }
     } catch (error) {
       console.error('加载游记列表失败:', error);
+      wx.hideLoading();
+      
       wx.showToast({
-        title: '加载失败',
-        icon: 'none'
+        title: error.message || '加载失败，请稍后重试',
+        icon: 'none',
+        duration: 2000
       });
     }
   },
@@ -91,12 +138,33 @@ Page({
       }
     });
   },
-
+  onBackToHome() {
+    wx.switchTab({
+      url: '/pages/home/index',
+    });
+  },
   /**
    * 生命周期函数--监听页面显示
    */
   onShow() {
+    const token = wx.getStorageSync('token');
+    
+    // 如果已登录，直接显示页面内容
+    if (token) {
+      // 加载笔记数据
+      this.loadNotesList();
+    } else {
+      // 如果未登录，跳转到登录页面
+      wx.redirectTo({
+        url: '/pages/login/index'
+      });
+      return;
+    }
 
+    // 更新tabBar选中状态
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setTabBarValue('mynotes');
+    }
   },
 
   /**
@@ -134,5 +202,9 @@ Page({
    */
   onShareAppMessage() {
 
+  },
+
+  loadNotes: function() {
+    // TODO: 实现加载笔记的逻辑
   }
 })

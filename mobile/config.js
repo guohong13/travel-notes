@@ -1,4 +1,4 @@
 export default {
-  isMock: true,
-  baseUrl: '',
+  isMock: false,
+  baseUrl: 'http://localhost:3300',
 };
