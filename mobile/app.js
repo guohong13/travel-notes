@@ -29,7 +29,7 @@ App({
       });
     }
     // 检查登录状态
-    const token = wx.getStorageSync('token');
+    const token = wx.getStorageSync('access_token');
     if (token) {
       this.globalData.isLoggedIn = true;
     }

@@ -9,15 +9,15 @@ const verifyAdminToken = require("./middleware/adminAuth");
 const upload = require("./middleware/multerConfig");
 
 // 登录频率限制
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 5, // 最多5次尝试
-  message: {
-    code: 0,
-    message: "尝试登录次数过多，请15分钟后再试",
-    data: null,
-  },
-});
+// const loginLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15分钟
+//   max: 5, // 最多5次尝试
+//   message: {
+//     code: 0,
+//     message: "尝试登录次数过多，请15分钟后再试",
+//     data: null,
+//   },
+// });
 
 /**
  * 用户注册接口
@@ -76,7 +76,7 @@ router.post("/users/register", async (req, res) => {
 /**
  * 用户登录接口
  */
-router.post("/users/login", loginLimiter, async (req, res) => {
+router.post("/users/login",  async (req, res) => {
   const { username, password } = req.body;
 
   // 判断输入是否为空
@@ -179,10 +179,20 @@ router.post(
     const { title, content } = req.body;
     const userId = req.user.id; // 从token中获取用户ID
 
-    // 获取图片和视频文件路径
-    const imagePaths = req.files["images"].map((f) => f.path);
-    const videoFile = (req.files["video"] || [])[0];
-    const video_url = videoFile ? videoFile.path : null;
+    // 获取额外的图片和视频文件路径
+    const extraImages = req.headers['x-extra-images'] ? 
+      req.headers['x-extra-images'].split(',').map(path => `/uploads/${path.split('/').pop()}`) : [];
+    const videoPath = req.headers['x-video-file'] ? 
+      `/uploads/${req.headers['x-video-file'].split('/').pop()}` : null;
+
+    // 获取上传的主图片路径
+    let mainImagePath = null;
+    if (req.files.images && req.files.images.length > 0) {
+      mainImagePath = `/uploads/${req.files.images[0].filename}`;
+    }
+
+    // 合并所有图片路径
+    const allImagePaths = mainImagePath ? [mainImagePath, ...extraImages] : extraImages;
 
     // 校验请求体中游记标题和内容（非文件内容）
     if (!title || !content) {
@@ -198,7 +208,7 @@ router.post(
     await connection.beginTransaction();
 
     try {
-      // 添加游记文本和视频数据
+      // 添加游记基本信息
       const addSql = `
         INSERT INTO travel_notes (user_id, title, content, video_url, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
@@ -207,10 +217,9 @@ router.post(
         userId,
         title,
         content,
-        video_url,
+        videoPath // 使用从请求头获取的视频路径
       ]);
 
-      // 获取游记表的主键id
       const travelNotesId = results.insertId;
 
       // 添加游记图片数据
@@ -227,7 +236,11 @@ router.post(
       return res.status(201).json({
         code: 1,
         message: "发布成功",
-        data: insertId,
+        data: {
+          id: travelNotesId,
+          video_url: videoPath,
+          image_urls: allImagePaths
+        }
       });
     } catch (transactionErr) {
       // 回滚事务
@@ -235,7 +248,7 @@ router.post(
       return res.status(500).json({
         code: 0,
         message: "发布失败",
-        data: null,
+        data: null
       });
     } finally {
       connection.release();
@@ -852,5 +865,6 @@ router.delete("/notes/delete/:id", verifyAdminToken, async (req, res) => {
     });
   }
 });
+
 
 module.exports = router;

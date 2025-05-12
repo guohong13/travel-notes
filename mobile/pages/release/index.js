@@ -251,7 +251,7 @@ Page({
           });
         },
         fail: (err) => {
-          console.error('视频压缩失败：', err);
+        //   console.error('视频压缩失败：', err);
           resolve(file); // 压缩失败时返回原文件
         }
       });
@@ -645,18 +645,32 @@ Page({
   },
   onShow() {
     // 检查登录状态
+    const app = getApp();
     const token = wx.getStorageSync('access_token');
-    if (!token) {
-      wx.showToast({
-        title: '请先登录',
-        icon: 'none',
-        duration: 1500,
-        success: () => {
-          setTimeout(() => {
+    
+    if (!token || !app.globalData.isLoggedIn) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再发布游记',
+        confirmText: '去登录',
+        cancelText: '返回首页',
+        success: (res) => {
+          if (res.confirm) {
             wx.navigateTo({
-              url: '/pages/login/index'
+              url: '/pages/login/index',
+              events: {
+                // 监听登录页面返回
+                loginSuccess: () => {
+                  // 登录成功后刷新页面状态
+                  this.onShow();
+                }
+              }
             });
-          }, 1500);
+          } else {
+            wx.switchTab({
+              url: '/pages/home/index'
+            });
+          }
         }
       });
       return;

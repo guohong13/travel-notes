@@ -62,7 +62,7 @@ Component({
 
       // 检查是否需要登录
       if (item.needLogin) {
-        const token = wx.getStorageSync('token');
+        const token = wx.getStorageSync('access_token');
         if (!token) {
           // 保存当前选中状态
           const currentValue = this.data.value;

@@ -85,7 +85,12 @@ Page({
     try {
       const res = await userApi.login({ username, password });
       if (res.code === 1) {
-        await wx.setStorageSync('access_token', res.data.token);
+        wx.setStorageSync('access_token', res.data.token);
+        // 更新全局登录状态
+        const app = getApp();
+        app.globalData.isLoggedIn = true;
+        app.globalData.token = res.data.token;
+        
         wx.showToast({
           title: res.message || '登录成功',
           icon: 'success',
@@ -97,6 +102,14 @@ Page({
           wx.switchTab({
             url: '/pages/mynotes/index',
           });
+          
+          // 通知上一个页面登录成功
+          const pages = getCurrentPages();
+          const prevPage = pages[pages.length - 2];
+          if (prevPage && prevPage.route === 'pages/release/index') {
+            const eventChannel = this.getOpenerEventChannel();
+            eventChannel.emit('loginSuccess');
+          }
         }, 1500);
       } else {
         wx.showToast({
