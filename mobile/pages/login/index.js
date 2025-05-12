@@ -1,4 +1,4 @@
-import { login } from '~/api/request';
+import { userApi } from '~/api/request';
 
 Page({
   data: {
@@ -83,17 +83,9 @@ Page({
     }
 
     try {
-      const res = await login({ username, password });
-      console.log('登录返回数据：', res);
-      if (res.code === 200 || res.code === 1) {
-        // 存储token
-        wx.setStorageSync('token', res.data.token);
-        console.log('Token已保存');
-        
-        // 设置全局登录状态
-        const app = getApp();
-        app.globalData.isLoggedIn = true;
-        
+      const res = await userApi.login({ username, password });
+      if (res.code === 1) {
+        await wx.setStorageSync('access_token', res.data.token);
         wx.showToast({
           title: res.message || '登录成功',
           icon: 'success',
@@ -102,19 +94,9 @@ Page({
 
         // 延迟跳转
         setTimeout(() => {
-          // 获取页面栈
-          const pages = getCurrentPages();
-          if (pages.length > 1) {
-            // 如果有上一页，返回上一页
-            wx.navigateBack({
-              delta: 1
-            });
-          } else {
-            // 如果没有上一页，跳转到我的页面
-            wx.switchTab({
-              url: '/pages/mynotes/index'
-            });
-          }
+          wx.switchTab({
+            url: '/pages/mynotes/index',
+          });
         }, 1500);
       } else {
         wx.showToast({
@@ -123,8 +105,9 @@ Page({
         });
       }
     } catch (error) {
+      console.error('登录失败：', error);
       wx.showToast({
-        title: res.message || '登录失败，请重试',
+        title: '登录失败，请重试',
         icon: 'none'
       });
     }

@@ -1,6 +1,6 @@
 // pages/release/index.js
 
-import { publishNote, uploadFile, uploadFilesAndPublish } from '~/api/request';
+import { notesApi } from '~/api/request';
 
 Page({
   /**
@@ -167,7 +167,7 @@ Page({
               // 如果获取视频信息失败，使用默认缩略图
               resolve({
                 ...file,
-                thumb: '/assets/images/video-placeholder.png', // 确保这个路径有一个默认的视频缩略图
+                thumb: '/assets/images/video-placeholder.png',
                 thumbUrl: '/assets/images/video-placeholder.png',
                 duration: 0,
                 width: 0,
@@ -525,7 +525,7 @@ Page({
     }
 
     // 检查是否登录
-    const token = wx.getStorageSync('token');
+    const token = wx.getStorageSync('access_token');
     if (!token) {
       wx.showToast({
         title: '请先登录',
@@ -581,7 +581,7 @@ Page({
       });
 
       // 调用API上传文件并发布游记
-      const publishRes = await uploadFilesAndPublish({
+      const publishRes = await notesApi.uploadFilesAndPublish({
         files: validFiles,
         title,
         content,
@@ -596,7 +596,7 @@ Page({
 
       wx.hideLoading();
 
-      if (publishRes.code === 200 || publishRes.code === 1) {
+      if (publishRes.code === 1) {
         wx.showToast({
           title: publishRes.message || '发布成功',
           icon: 'success',
@@ -645,7 +645,7 @@ Page({
   },
   onShow() {
     // 检查登录状态
-    const token = wx.getStorageSync('token');
+    const token = wx.getStorageSync('access_token');
     if (!token) {
       wx.showToast({
         title: '请先登录',

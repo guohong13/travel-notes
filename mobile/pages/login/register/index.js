@@ -1,4 +1,4 @@
-import { register } from '~/api/request';
+import { userApi } from '~/api/request';
 
 const app = getApp()
 
@@ -66,17 +66,32 @@ Page({
     }
 
     try {
+      // 上传头像
+      let avatarFileID = '';
+      if (avatarUrl !== '/static/avatar1.png') {
+        // 将图片转为base64
+        const fileRes = await new Promise((resolve, reject) => {
+          wx.getFileSystemManager().readFile({
+            filePath: avatarUrl,
+            encoding: 'base64',
+            success: res => resolve(res.data),
+            fail: err => reject(err)
+          });
+        });
+        avatarFileID = `data:image/jpeg;base64,${fileRes}`;
+      }
+
       // 注册用户
-      const res = await register({
+      const res = await userApi.register({
         username,
         nickname,
         password,
-        avatar_url: avatarUrl
-      })
+        avatar_url: avatarFileID || '/static/avatar1.png'
+      });
 
       if (res.code === 1) {
         wx.showToast({
-          title: res.message || '注册成功',
+          title: '注册成功',
           icon: 'success'
         })
         

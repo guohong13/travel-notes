@@ -1,5 +1,5 @@
 import Message from 'tdesign-miniprogram/message/index';
-import request from '~/api/request';
+import { notesApi } from '~/api/request';
 
 
 // 获取应用实例
@@ -10,6 +10,8 @@ Page({
     enable: false,
     swiperList: [],
     cardInfo: [],
+    notesList: [], // 游记列表
+    loading: false, // 加载状态
     // 发布
     motto: 'Hello World',
     userInfo: {},
@@ -20,16 +22,35 @@ Page({
   },
   // 生命周期
   async onReady() {
-    const [cardRes, swiperRes] = await Promise.all([
-      request('/home/cards').then((res) => res.data),
-      request('/home/swipers').then((res) => res.data),
-    ]);
-
-    this.setData({
-      cardInfo: cardRes.data,
-      focusCardInfo: cardRes.data.slice(0, 3),
-      swiperList: swiperRes.data,
-    });
+    await this.loadNotesList();
+  },
+  // 加载游记列表
+  async loadNotesList() {
+    try {
+      this.setData({ loading: true });
+      const res = await notesApi.getHomeNotes();
+      
+      if (res.code === 1) {
+        this.setData({
+          notesList: res.data,
+          cardInfo: res.data, // 将游记数据也设置到cardInfo中用于展示
+          focusCardInfo: res.data.slice(0, 3)
+        });
+      } else {
+        wx.showToast({
+          title: res.message || '加载失败',
+          icon: 'none'
+        });
+      }
+    } catch (error) {
+      console.error('加载游记列表失败：', error);
+      wx.showToast({
+        title: '加载失败，请重试',
+        icon: 'none'
+      });
+    } finally {
+      this.setData({ loading: false });
+    }
   },
   onLoad(option) {
     if (wx.getUserProfile) {
@@ -54,16 +75,12 @@ Page({
     this.setData({
       enable: true,
     });
-    const [cardRes, swiperRes] = await Promise.all([
-      request('/home/cards').then((res) => res.data),
-      request('/home/swipers').then((res) => res.data),
-    ]);
+
+    await this.loadNotesList();
 
     setTimeout(() => {
       this.setData({
         enable: false,
-        cardInfo: cardRes.data,
-        swiperList: swiperRes.data,
       });
     }, 1500);
   },

@@ -1,5 +1,5 @@
 // pages/mynotes/index.js
-import request from '~/api/request';
+import { notesApi } from '~/api/request';
 
 Page({
 
@@ -11,16 +11,7 @@ Page({
   },
 
   async onReady() {
-    const [cardRes, swiperRes] = await Promise.all([
-      request('/home/cards').then((res) => res.data),
-      request('/home/swipers').then((res) => res.data),
-    ]);
-
-    this.setData({
-      cardInfo: cardRes.data,
-      focusCardInfo: cardRes.data.slice(0, 3),
-      swiperList: swiperRes.data,
-    });
+    await this.loadNotesList();
   },
 
   /**
@@ -32,7 +23,7 @@ Page({
 
   async loadNotesList() {
     try {
-      const token = wx.getStorageSync('token');
+      const token = wx.getStorageSync('access_token');
       if (!token) {
         wx.redirectTo({
           url: '/pages/login/index'
@@ -45,16 +36,11 @@ Page({
         mask: true
       });
 
-      const res = await request('/mynotes/list', {
-        method: 'GET',
-        header: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const res = await notesApi.getUserNotes();
 
       wx.hideLoading();
 
-      if (res.code === 200 || res.code === 1) {
+      if (res.code === 1) {
         // 处理空数据的情况
         const notesList = res.data || [];
         this.setData({
@@ -63,7 +49,7 @@ Page({
         });
       } else if (res.code === 401 || res.code === 403) {
         // token失效，需要重新登录
-        wx.removeStorageSync('token');
+        wx.removeStorageSync('access_token');
         const app = getApp();
         app.globalData.isLoggedIn = false;
         
@@ -105,18 +91,31 @@ Page({
     wx.showModal({
       title: '确认删除',
       content: '确定要删除这篇游记吗？',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          // 从列表中删除该游记
-          const newList = this.data.notesList.filter(item => item.id !== travelNote.id);
-          this.setData({
-            notesList: newList
-          });
-          
-          wx.showToast({
-            title: '删除成功',
-            icon: 'success'
-          });
+          try {
+            const deleteRes = await notesApi.deleteNote(travelNote.id);
+            if (deleteRes.code === 1) {
+              // 从列表中删除该游记
+              const newList = this.data.notesList.filter(item => item.id !== travelNote.id);
+              this.setData({
+                notesList: newList
+              });
+              
+              wx.showToast({
+                title: '删除成功',
+                icon: 'success'
+              });
+            } else {
+              throw new Error(deleteRes.message || '删除失败');
+            }
+          } catch (error) {
+            console.error('删除游记失败:', error);
+            wx.showToast({
+              title: error.message || '删除失败，请重试',
+              icon: 'none'
+            });
+          }
         }
       }
     });
@@ -126,7 +125,7 @@ Page({
     const { travelNote } = e.detail;
     // 将游记数据编码后传递到编辑页面
     const url = `/pages/edit/index?data=${encodeURIComponent(JSON.stringify(travelNote))}`;
-    console.log('跳转URL:', url); // 添加日志
+    console.log('跳转URL:', url);
     wx.navigateTo({
       url,
       fail: (err) => {
@@ -147,7 +146,7 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow() {
-    const token = wx.getStorageSync('token');
+    const token = wx.getStorageSync('access_token');
     
     // 如果已登录，直接显示页面内容
     if (token) {
