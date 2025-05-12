@@ -429,6 +429,8 @@ router.get("/notes", async (req, res) => {
       SELECT 
         tn.id,
         tn.user_id,
+        u.nickname,
+        u.avatar_url,
         tn.title,
         tn.content,
         tn.video_url,
@@ -439,6 +441,8 @@ router.get("/notes", async (req, res) => {
       LEFT JOIN note_images ni 
         ON tn.id = ni.travel_notes_id 
         AND ni.is_deleted = 0
+      LEFT JOIN users u
+        ON tn.user_id = u.id
       WHERE tn.is_deleted = 0
         AND tn.status = "approved"
       GROUP BY tn.id
@@ -537,9 +541,11 @@ router.get("/notes/search", async (req, res) => {
         tn.id,
         tn.user_id,
         tn.title,
+        tn.content,
         tn.video_url,
         tn.created_at,
         u.nickname,
+        u.avatar_url,
         GROUP_CONCAT(ni.image_url) AS images
       FROM travel_notes tn
       LEFT JOIN note_images ni 
@@ -556,25 +562,32 @@ router.get("/notes/search", async (req, res) => {
 
     // 安全处理搜索条件
     if (title) {
-      conditions.push("tn.title LIKE ?");
-      params.push(`%${title}%`);
+      conditions.push("(tn.title LIKE ? OR tn.content LIKE ?)");
+      params.push(`%${title}%`, `%${title}%`);
     }
     if (nickname) {
       conditions.push("u.nickname LIKE ?");
       params.push(`%${nickname}%`);
     }
 
-    querySql += ` AND ${conditions.join(" AND ")} 
-              GROUP BY tn.id
-              ORDER BY tn.created_at DESC`;
+    if (conditions.length > 0) {
+      querySql += ` AND (${conditions.join(" OR ")})`;
+    }
+
+    querySql += ` GROUP BY tn.id ORDER BY tn.created_at DESC`;
+
+    console.log('搜索SQL:', querySql);
+    console.log('搜索参数:', params);
 
     const [notes] = await db.promise().query(querySql, params);
 
     // 格式化结果
     const formatted = notes.map((note) => ({
       ...note,
-      images: note.images.split(","),
+      images: note.images ? note.images.split(",") : []
     }));
+
+    console.log('搜索结果数量:', formatted.length);
 
     return res.status(200).json({
       code: 1,
@@ -584,6 +597,7 @@ router.get("/notes/search", async (req, res) => {
       },
     });
   } catch (err) {
+    console.error('搜索错误:', err);
     return res.status(500).json({
       code: 0,
       message: "服务器内部错误",

@@ -1,4 +1,5 @@
 import request from '~/api/request';
+import { notesApi } from '~/api/request';
 
 Page({
   data: {
@@ -32,23 +33,42 @@ Page({
   onLoad(options) {
     if (options.data) {
       try {
-        const travelNote = JSON.parse(decodeURIComponent(options.data));
-        // 将coverImage转换为images数组格式
-        const images = travelNote.coverImage ? [{
-          url: travelNote.coverImage,
-          type: 'image',
-          name: 'cover'
-        }] : [];
+        const editData = JSON.parse(decodeURIComponent(options.data));
+        console.log('编辑数据:', editData);
+        
+        // 转换文件数据为images数组格式
+        const images = [];
+        
+        // 处理视频
+        if (editData.video_url) {
+          images.push({
+            url: editData.video_url,
+            type: 'video',
+            status: 'done'
+          });
+        }
+        
+        // 处理图片
+        if (editData.images && editData.images.length > 0) {
+          editData.images.forEach(imgUrl => {
+            images.push({
+              url: imgUrl,
+              type: 'image',
+              status: 'done'
+            });
+          });
+        }
         
         this.setData({
-          id: travelNote.id,
-          title: travelNote.title,
-          content: travelNote.content,
-          location: travelNote.location,
-          images
+          id: editData.id,
+          title: editData.title || '',
+          content: editData.content || '',
+          location: editData.location || '',
+          images: images,
+          hasVideo: !!editData.video_url
         });
       } catch (error) {
-        console.error('解析游记数据失败:', error);
+        console.error('解析编辑数据失败:', error);
         wx.showToast({
           title: '数据加载失败',
           icon: 'none'
@@ -170,7 +190,7 @@ Page({
   async onSave() {
     const { id, title, content, location, images } = this.data;
     
-    if (!title || !content || !location || images.length === 0) {
+    if (!title || !content || images.length === 0) {
       wx.showToast({
         title: '请填写完整信息',
         icon: 'none'
@@ -179,30 +199,45 @@ Page({
     }
 
     try {
-      // 使用第一张图片或视频作为封面
-      const coverImage = images[0].url;
-      
-      await request('/mynotes/update', {
-        id,
+      wx.showLoading({
+        title: '保存中...',
+        mask: true
+      });
+
+      // 准备文件数据
+      const files = images.map(img => ({
+        type: img.type,
+        tempFilePath: img.url
+      }));
+
+      // 调用更新API
+      const res = await notesApi.updateNote(id, {
         title,
         content,
         location,
-        coverImage
+        files
       });
 
-      wx.showToast({
-        title: '保存成功',
-        icon: 'success',
-        success: () => {
-          setTimeout(() => {
-            wx.navigateBack();
-          }, 1500);
-        }
-      });
+      wx.hideLoading();
+
+      if (res.code === 1) {
+        wx.showToast({
+          title: '保存成功',
+          icon: 'success',
+          success: () => {
+            setTimeout(() => {
+              wx.navigateBack();
+            }, 1500);
+          }
+        });
+      } else {
+        throw new Error(res.message || '保存失败');
+      }
     } catch (error) {
       console.error('保存失败:', error);
+      wx.hideLoading();
       wx.showToast({
-        title: '保存失败',
+        title: error.message || '保存失败',
         icon: 'none'
       });
     }

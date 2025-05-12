@@ -1,7 +1,7 @@
 <view class="travel-note-card">
   <!-- 卡片左侧：游记首图封面 -->
   <view class="card-left">
-    <image src="{{travelNote.coverImage}}" mode="aspectFill"></image>
+    <image src="{{travelNote.images[0]}}" mode="aspectFill"></image>
   </view>
   <!-- 卡片右侧：标题、内容和按钮 -->
   <view class="card-right">

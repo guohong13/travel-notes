@@ -1,4 +1,5 @@
 import request from '~/api/request';
+import { notesApi } from '~/api/request';
 
 Page({
   data: {
@@ -25,35 +26,7 @@ Page({
    * 查询历史记录
    * @returns {Promise<void>}
    */
-  async queryHistory() {
-    request('/api/searchHistory').then((res) => {
-      const { code, data } = res;
 
-      if (code === 200) {
-        const { historyWords = [] } = data;
-        this.setData({
-          historyWords,
-        });
-      }
-    });
-  },
-
-  /**
-   * 查询热门搜索
-   * @returns {Promise<void>}
-   */
-  async queryPopular() {
-    request('/api/searchPopular').then((res) => {
-      const { code, data } = res;
-
-      if (code === 200) {
-        const { popularWords = [] } = data;
-        this.setData({
-          popularWords,
-        });
-      }
-    });
-  },
 
   setHistoryWords(searchValue) {
     if (!searchValue) return;

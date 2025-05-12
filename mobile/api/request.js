@@ -25,12 +25,17 @@ export const notesApi = {
   getHomeNotes: () => {
     return request('/api/notes', 'GET');
   },
+  // 获取游记详情
+  getNoteDetail: (id) => {
+    return request(`/api/notes/${id}`, 'GET');
+  },
   // 获取用户游记列表
   getUserNotes: (userId) => {
     return request(`/api/notes/user/${userId}`, 'GET');
   },
   // 搜索游记
   searchNotes: (params) => {
+    console.log('搜索参数:', params);
     return request('/api/notes/search', 'GET', params);
   },
   // 发布游记
@@ -82,7 +87,7 @@ export const notesApi = {
               const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
               console.log('发布响应:', data);
               
-              if (res.statusCode === 200 || res.statusCode === 201 || data.code === 1) {
+              if (res.statusCode === 200 || res.statusCode === 201 || res.code === 1) {
                 resolve(data);
               } else {
                 reject(new Error(data.message || `发布失败: ${res.statusCode}`));

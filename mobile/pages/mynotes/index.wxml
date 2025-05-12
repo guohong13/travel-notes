@@ -1,5 +1,5 @@
 <t-navbar title="我的游记" left-arrow bind:go-back="onBackToHome"></t-navbar>
-<view class="my-page" style="height: 1522rpx; display: block; box-sizing: border-box">
+<view class="my-page">
   <view class="travel-note-list">
     <block wx:if="{{notesList.length > 0}}">
       <mycard 

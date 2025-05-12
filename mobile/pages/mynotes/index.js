@@ -1,5 +1,6 @@
 // pages/mynotes/index.js
 import { notesApi } from '~/api/request';
+import { userApi } from '~/api/request';
 
 Page({
 
@@ -31,28 +32,40 @@ Page({
         return;
       }
 
-      wx.showLoading({
-        title: '加载中...',
-        mask: true
-      });
+    //   wx.showLoading({
+    //     title: '加载中...',
+    //     mask: true
+    //   });
 
-      const res = await notesApi.getUserNotes();
+      const userRes = await userApi.getProfile();
+      if (userRes.code !== 1 || !userRes.data || !userRes.data.id) {
+        throw new Error('获取用户信息失败');
+      }
+      const userId = userRes.data.id;
+
+      const res = await notesApi.getUserNotes(userId);
 
       wx.hideLoading();
 
       if (res.code === 1) {
-        // 处理空数据的情况
-        const notesList = res.data || [];
+        const BASE_URL = 'http://localhost:3300'; // 替换为你的服务器地址
+        const notesList = (res.data || []).map(note => ({
+          ...note,
+          images: note.images
+            ? note.images.map(img => img.startsWith('http') ? img : BASE_URL + img)
+            : [],
+        //   avatar: note.avatar || '/assets/images/default-avatar.png',
+        //   nickname: note.nickname || '游客'
+        }));
+        console.log("noteslist:",notesList)
         this.setData({
           notesList,
           isEmpty: notesList.length === 0
         });
       } else if (res.code === 401 || res.code === 403) {
-        // token失效，需要重新登录
         wx.removeStorageSync('access_token');
         const app = getApp();
         app.globalData.isLoggedIn = false;
-        
         wx.showToast({
           title: '登录已过期，请重新登录',
           icon: 'none',
@@ -71,19 +84,12 @@ Page({
     } catch (error) {
       console.error('加载游记列表失败:', error);
       wx.hideLoading();
-      
       wx.showToast({
         title: error.message || '加载失败，请稍后重试',
         icon: 'none',
         duration: 2000
       });
     }
-  },
-
-  goToPublish() {
-    wx.switchTab({
-      url: '/pages/release/index',
-    });
   },
 
   onDeleteTravelNote(e) {
@@ -123,8 +129,37 @@ Page({
 
   onEditTravelNote(e) {
     const { travelNote } = e.detail;
+    // 处理图片和视频数据
+    const files = [];
+    
+    // 添加图片
+    if (travelNote.images && travelNote.images.length > 0) {
+      travelNote.images.forEach(imgUrl => {
+        files.push({
+          type: 'image',
+          url: imgUrl,
+          tempFilePath: imgUrl
+        });
+      });
+    }
+    
+    // 添加视频
+    if (travelNote.video_url) {
+      files.push({
+        type: 'video',
+        url: travelNote.video_url,
+        tempFilePath: travelNote.video_url
+      });
+    }
+
+    // 构建要传递的数据
+    const editData = {
+      ...travelNote,
+      files
+    };
+
     // 将游记数据编码后传递到编辑页面
-    const url = `/pages/edit/index?data=${encodeURIComponent(JSON.stringify(travelNote))}`;
+    const url = `/pages/edit/index?data=${encodeURIComponent(JSON.stringify(editData))}`;
     console.log('跳转URL:', url);
     wx.navigateTo({
       url,
