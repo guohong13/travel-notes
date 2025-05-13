@@ -51,7 +51,7 @@ export const notesApi = {
     return request(`/api/notes/delete/${id}`, 'DELETE');
   },
   // 上传文件并发布游记
-  uploadFilesAndPublish: async ({ files, title, content, location }) => {
+  uploadFilesAndPublish: async ({ files, title, content }) => {
     try {
       wx.showLoading({
         title: '正在发布...',
@@ -61,65 +61,108 @@ export const notesApi = {
       // 找出视频和图片文件
       const videoFile = files.find(f => f.type === 'video');
       const imageFiles = files.filter(f => f.type === 'image');
-
-      return new Promise((resolve, reject) => {
-        // 创建 FormData 对象
-        const formData = {
-          title,
-          content
-        };
-
-        // 创建上传任务
-        const uploadTask = wx.uploadFile({
-          url: baseUrl + '/api/notes',
-          filePath: imageFiles[0].tempFilePath,
-          name: 'images',
-          formData,
-          header: {
-            'Authorization': `Bearer ${wx.getStorageSync('access_token')}`,
-            'X-Extra-Images': imageFiles.length > 1 ? 
-              imageFiles.slice(1).map(img => img.tempFilePath).join(',') : '',
-            'X-Video-File': videoFile ? videoFile.tempFilePath : ''
-          },
-          success: (res) => {
-            wx.hideLoading();
-            try {
-              const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-              console.log('发布响应:', data);
-              
-              if (res.statusCode === 200 || res.statusCode === 201 || res.code === 1) {
-                resolve(data);
-              } else {
-                reject(new Error(data.message || `发布失败: ${res.statusCode}`));
-              }
-            } catch (e) {
-              console.error('解析响应失败:', e);
-              reject(new Error('解析响应失败'));
-            }
-          },
-          fail: (err) => {
-            wx.hideLoading();
-            console.error('发布请求失败:', err);
-            reject(new Error(err.errMsg || '网络请求失败'));
-          }
-        });
-
-        // 监听上传进度
-        uploadTask.onProgressUpdate((res) => {
-          console.log('上传进度:', res.progress);
-          // 这里可以添加进度条显示
-          wx.showLoading({
-            title: `上传中 ${res.progress}%`,
-            mask: true
-          });
-        });
+      console.log('文件信息：', {
+        totalFiles: files.length,
+        imageFiles: imageFiles.length,
+        hasVideo: !!videoFile,
+        files: files.map(f => ({
+          type: f.type,
+          tempFilePath: f.tempFilePath,
+          url: f.url
+        }))
       });
-    } catch (error) {
-      wx.hideLoading();
-      console.error('发布失败：', error);
-      throw error;
-    }
+
+    //   if (imageFiles.length === 0) {
+    //     throw new Error('请至少上传一张图片');
+    //   }
+
+       // 第一步：上传文件
+    const uploadTasks = [];
+    function parseResponse(res) {
+        try {
+          // 处理后端返回格式: { code, message, data }
+          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+          return data.data || data; // 直接返回data字段
+        } catch (error) {
+          console.error('解析响应失败:', error);
+          return {};
+        }
+      }
+    function createUploadTask(filePath, name, type) {
+        return new Promise((resolve, reject) => {
+          wx.uploadFile({
+            url: baseUrl + '/api/upload',
+            filePath,
+            name,
+            header: {
+              'Authorization': `Bearer ${wx.getStorageSync('access_token')}`
+            },
+            success: (res) => {
+              try {
+                const data = parseResponse(res);
+                resolve({ type, data });
+              } catch (e) {
+                reject(new Error('解析响应失败'));
+              }
+            },
+            fail: reject
+          });
+          // 监听上传进度
+    // uploadTask.onProgressUpdate((res) => {
+    //     console.log(`${type}上传进度: ${res.progress}%`);
+    //   });
+        });
+      }
+      
+      // 使用函数创建上传任务
+      imageFiles.forEach((file, index) => {
+        uploadTasks.push(createUploadTask(file.tempFilePath, 'images', 'image'));
+      });
+      
+      if (videoFile) {
+        uploadTasks.push(createUploadTask(videoFile.tempFilePath, 'video', 'video'));
+      }
+
+    // 等待所有文件上传完成
+    const uploadResults = await Promise.all(uploadTasks);
+    console.log("uploadResults:",uploadResults)
+    
+    // 收集所有上传的文件路径
+    const uploadedFiles = uploadResults.reduce((acc, result) => {
+        if (result.type === 'image') {
+          // 处理图片上传结果
+          if (result.data.images && result.data.images.length > 0) {
+            acc.images = [...(acc.images || []), ...result.data.images];
+          }
+        } else if (result.type === 'video') {
+          // 处理视频上传结果
+          if (result.data.video) {
+            acc.video = result.data.video;
+          }
+        }
+        return acc;
+      }, { images: [], video: null });
+
+    console.log("图片路径：",uploadedFiles.images)
+    console.log("视频路径：",uploadedFiles.video)
+    
+    // 第二步：发布游记
+    const publishResult = await request('/api/notes', 'POST', {
+      title,
+      content,
+      images: uploadedFiles.images,
+      video_url: uploadedFiles.video
+    });
+
+    wx.hideLoading();
+    return publishResult;
+
+  } catch (error) {
+    wx.hideLoading();
+    console.error('发布失败：', error);
+    throw error;
   }
+}
 };
 
 function request(url, method = 'GET', data = {}, customHeader = {}) {

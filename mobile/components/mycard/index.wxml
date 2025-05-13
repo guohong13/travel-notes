@@ -11,7 +11,7 @@
     </view>
     <!-- 部分内容 -->
     <view class="card-content">
-      <text>{{travelNote.content.slice(0, 50)}}{{travelNote.content.length > 50 ? '...' : ''}}</text>
+      <text>{{travelNote.content.slice(0, 10)}}{{travelNote.content.length > 10 ? '...' : ''}}</text>
     </view>
     <!-- 底部信息和按钮 -->
     <view class="card-bottom">

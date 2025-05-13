@@ -166,39 +166,64 @@ router.get("/users/profile", verifyUserToken, (req, res) => {
 });
 
 /**
- * 用户发布游记接口
+ * 文件上传接口
  */
 router.post(
-  "/notes",
+  "/upload",
   verifyUserToken,
   upload.fields([
     { name: "images", maxCount: 10 },
     { name: "video", maxCount: 1 },
   ]),
   async (req, res) => {
-    const { title, content } = req.body;
-    const userId = req.user.id; // 从token中获取用户ID
+    try {
+      // 获取上传的文件
+      const images = req.files["images"] || [];
+      const video = req.files["video"] ? req.files["video"][0] : null;
 
-    // 获取额外的图片和视频文件路径
-    const extraImages = req.headers['x-extra-images'] ? 
-      req.headers['x-extra-images'].split(',').map(path => `/uploads/${path.split('/').pop()}`) : [];
-    const videoPath = req.headers['x-video-file'] ? 
-      `/uploads/${req.headers['x-video-file'].split('/').pop()}` : null;
-
-    // 获取上传的主图片路径
-    let mainImagePath = null;
-    if (req.files.images && req.files.images.length > 0) {
-      mainImagePath = `/uploads/${req.files.images[0].filename}`;
+      // 返回文件路径
+      return res.status(200).json({
+        code: 1,
+        message: "上传成功",
+        data: {
+          images: images.map(img => img.path),
+          video: video ? video.path : null
+        }
+      });
+    } catch (error) {
+      console.error("文件上传失败:", error);
+      return res.status(500).json({
+        code: 0,
+        message: "文件上传失败: " + error.message,
+        data: null
+      });
     }
+  }
+);
 
-    // 合并所有图片路径
-    const allImagePaths = mainImagePath ? [mainImagePath, ...extraImages] : extraImages;
+/**
+ * 用户发布游记接口
+ */
+router.post(
+  "/notes",
+  verifyUserToken,
+  async (req, res) => {
+    const { title, content, images, video_url } = req.body;
+    const userId = req.user.id;
 
-    // 校验请求体中游记标题和内容（非文件内容）
+    // 校验请求体
     if (!title || !content) {
       return res.status(400).json({
         code: 0,
         message: "标题和内容为必填项",
+        data: null,
+      });
+    }
+
+    if (!images || images.length === 0) {
+      return res.status(400).json({
+        code: 0,
+        message: "请至少上传一张图片",
         data: null,
       });
     }
@@ -211,24 +236,21 @@ router.post(
       // 添加游记基本信息
       const addSql = `
         INSERT INTO travel_notes (user_id, title, content, video_url, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
-        `;
+        VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
+      `;
       const [results] = await connection.query(addSql, [
         userId,
         title,
         content,
-        videoPath // 使用从请求头获取的视频路径
+        video_url || null,
       ]);
 
       const travelNotesId = results.insertId;
 
       // 添加游记图片数据
-      if (imagePaths.length > 0) {
-        const values = imagePaths.map((image) => [travelNotesId, image, 0]);
-        const addSql2 =
-          "INSERT INTO note_images (travel_notes_id, image_url, is_deleted) VALUES ?";
-        await connection.query(addSql2, [values]);
-      }
+      const imageValues = images.map(image => [travelNotesId, image, 0]);
+      const addImagesSql = "INSERT INTO note_images (travel_notes_id, image_url, is_deleted) VALUES ?";
+      await connection.query(addImagesSql, [imageValues]);
 
       // 提交事务
       await connection.commit();
@@ -238,16 +260,19 @@ router.post(
         message: "发布成功",
         data: {
           id: travelNotesId,
-          video_url: videoPath,
-          image_urls: allImagePaths
+          title,
+          content,
+          images,
+          video: video_url,
         }
       });
-    } catch (transactionErr) {
+    } catch (error) {
       // 回滚事务
       await connection.rollback();
+      console.error("发布失败:", error);
       return res.status(500).json({
         code: 0,
-        message: "发布失败",
+        message: "发布失败: " + error.message,
         data: null
       });
     } finally {

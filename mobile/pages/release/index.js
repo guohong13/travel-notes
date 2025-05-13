@@ -140,7 +140,6 @@ Page({
   async generateVideoThumbnail(file) {
     return new Promise((resolve, reject) => {
       // 创建一个临时的video标签来获取视频信息
-      const videoContext = wx.createVideoContext('tempVideo');
       const videoUrl = file.url || file.tempFilePath;
       
       // 设置视频源
@@ -163,7 +162,6 @@ Page({
               });
             },
             fail: (err) => {
-              console.error('获取视频信息失败：', err);
               // 如果获取视频信息失败，使用默认缩略图
               resolve({
                 ...file,
@@ -251,7 +249,6 @@ Page({
           });
         },
         fail: (err) => {
-        //   console.error('视频压缩失败：', err);
           resolve(file); // 压缩失败时返回原文件
         }
       });
@@ -572,7 +569,6 @@ Page({
         title,
         content,
         filesCount: validFiles.length,
-        hasLocation: !!location,
         files: validFiles.map(f => ({
           type: f.type,
           tempFilePath: f.tempFilePath,
@@ -585,12 +581,6 @@ Page({
         files: validFiles,
         title,
         content,
-        location: location ? {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          name: locationName,
-          address: address
-        } : null,
         token
       });
 
@@ -613,7 +603,6 @@ Page({
         throw new Error(publishRes.message || '发布失败');
       }
     } catch (error) {
-      console.error('发布失败：', error);
       wx.hideLoading();
       
       if (error.message === '登录已过期，请重新登录') {

@@ -69,7 +69,7 @@ Page({
       console.log('loadNotesList: API response', res);
       
       if (res.code === 1 && Array.isArray(res.data)) {
-        const BASE_URL = 'http://localhost:3300'; // 例如 https://api.xxx.com
+        const BASE_URL = 'http://localhost:3300/'; // 例如 https://api.xxx.com
 
         const formattedList = res.data.map(note => ({
           id: note.id,

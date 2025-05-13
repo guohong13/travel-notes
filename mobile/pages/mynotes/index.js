@@ -12,7 +12,7 @@ Page({
   },
 
   async onReady() {
-    await this.loadNotesList();
+    // await this.loadNotesList();
   },
 
   /**
@@ -48,7 +48,7 @@ Page({
       wx.hideLoading();
 
       if (res.code === 1) {
-        const BASE_URL = 'http://localhost:3300'; // 替换为你的服务器地址
+        const BASE_URL = 'http://localhost:3300/'; // 替换为你的服务器地址
         const notesList = (res.data || []).map(note => ({
           ...note,
           images: note.images
