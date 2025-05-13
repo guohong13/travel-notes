@@ -24,7 +24,6 @@ function verifyAdminToken(req, res, next) {
         data: null,
       });
     }
-
     req.admin = decoded;
     next();
   });

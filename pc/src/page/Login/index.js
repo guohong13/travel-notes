@@ -7,30 +7,26 @@ import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-// import CryptoJS from "crypto-js";
-
 const Login = () => {
   const [passwordVisible, setPasswordVisible] = React.useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const onFinish = async (values) => {
     try {
-      // 对密码进行哈希处理
-      // const password_hash = CryptoJS.SHA256(values.password).toString();
       const response = await axios.post(
         "http://localhost:3300/api/admin/login",
         {
           username: values.username,
           password: values.password,
-          // password: password_hash,
         }
       );
       // 保存 token 到 localStorage
-      localStorage.setItem("adminToken", response.data.token);
-      console.log("登录成功", response);
-      messageApi.success("登入成功");
+      localStorage.setItem("adminToken", response.data.data.token);
+      const successMessage = response.data.message;
+      // console.log("登录成功", response);
+      messageApi.success(successMessage);
       setTimeout(() => {
-        navigate("/Audit");
+        navigate("/travel-notes/notes");
       }, 500);
     } catch (error) {
       if (error.response) {

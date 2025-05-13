@@ -10,5 +10,4 @@ const db = mysql.createPool({
 });
 
 const jwtSecret = "cughpscil";
-
 module.exports = { db, jwtSecret };

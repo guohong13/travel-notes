@@ -1,0 +1,75 @@
+@import "~antd/dist/reset.css";
+
+.main-layout {
+  min-height: 100vh;
+
+  .fixed-header {
+    position: fixed;
+    z-index: 100;
+    width: 100%;
+    height: 64px;
+    line-height: 64px;
+    padding: 0 24px;
+    background: #001529;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .logo {
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      .user-name {
+        color: #fff !important;
+        align-items: left;
+      }
+
+      .user-logout {
+        color: #fff !important;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+      }
+    }
+  }
+
+  .content-layout {
+    margin-top: 64px;
+
+    .fixed-sider {
+      position: fixed;
+      height: calc(100vh - 64px);
+      left: 0;
+      overflow: auto;
+      z-index: 99;
+
+      .nav-menu {
+        margin-top: 12px;
+      }
+    }
+
+    .main-content {
+      margin-left: 200px;
+      transition: margin-left 0.2s;
+      padding: 16px;
+      min-height: calc(100vh - 64px);
+
+      &.collapsed {
+        margin-left: 80px;
+      }
+
+      .breadcrumb {
+        margin-bottom: 16px;
+      }
+      .layout-content {
+        overflow-y: auto;
+      }
+    }
+  }
+}
