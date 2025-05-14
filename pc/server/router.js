@@ -51,7 +51,7 @@ router.post("/users/register", upload.single("avatar"), async (req, res) => {
 
     const avatarUrl = avatarFile
       ? `/uploads/${avatarFile.filename}`
-      : "/uploads/default.png";
+      : "/uploads/user.jpg";
 
     await db
       .promise()
@@ -568,6 +568,7 @@ router.get("/notes/search", async (req, res) => {
         tn.video_url,
         tn.created_at,
         u.nickname,
+        u.avatar_url,
         GROUP_CONCAT(ni.image_url) AS images
       FROM travel_notes tn
       LEFT JOIN note_images ni 
@@ -592,9 +593,10 @@ router.get("/notes/search", async (req, res) => {
       params.push(`%${nickname}%`);
     }
 
-    querySql += ` AND ${conditions.join(" AND ")} 
-              GROUP BY tn.id
-              ORDER BY tn.created_at DESC`;
+    if (conditions.length > 0) {
+      querySql += ` AND (${conditions.join(" OR ")})`;
+    }
+    querySql += ` GROUP BY tn.id ORDER BY tn.created_at DESC`;
 
     const [notes] = await db.promise().query(querySql, params);
 
