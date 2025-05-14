@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, Spin, Image, Tag, Button, message, Modal, Input } from "antd";
+import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import formatDate from "@/utils/date";
 import "./index.scss";
@@ -17,6 +18,8 @@ const AuditDetail = () => {
   const [approveConfirmVisible, setApproveConfirmVisible] = useState(false);
   const [approveVisible, setApproveErrorVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const { role } = useSelector((state) => state.user);
+  const userIsAdmin = role === "admin";
   const token = localStorage.getItem("adminToken");
 
   useEffect(() => {
@@ -189,12 +192,14 @@ const AuditDetail = () => {
         >
           拒绝
         </Button>,
-
         <Button
           key="delete"
           type="primary"
           danger
           onClick={() => setDeleteConfirmVisible(true)}
+          // 添加权限判断
+          disabled={!userIsAdmin}
+          title={!userIsAdmin ? "需要管理员权限" : ""}
         >
           删除
         </Button>,

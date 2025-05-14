@@ -1,0 +1,26 @@
+/* 外层容器 */
+.home-wrapper {
+  padding: 0px;
+  height: 100%;
+
+  /* Card 相关 */
+  .ant-card {
+    width: 100%;
+    border-radius: 8px;
+    .ant-card-head {
+      padding: 0 16px;
+    }
+    .ant-card-body {
+      padding: 16px;
+    }
+  }
+
+  /* ECharts 图表区域 */
+  .echarts-for-react {
+    width: 100% !important;
+    margin-bottom: 48px;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}

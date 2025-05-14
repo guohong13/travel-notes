@@ -1,5 +1,5 @@
 // NotesLayout.jsx
-import React, { useState } from "react";
+
 import {
   HomeOutlined,
   AuditOutlined,
@@ -8,6 +8,9 @@ import {
 } from "@ant-design/icons";
 import { Breadcrumb, Layout, Menu, Popconfirm } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { loadUser, clearUser } from "@/Store/userSlice";
 import "./index.scss";
 
 const { Header, Content, Sider } = Layout;
@@ -23,21 +26,31 @@ const ROUTE_NAME_MAP = {
 };
 
 const items = [
-  getItem("首页", "/travel-notes", <HomeOutlined />),
+  getItem("首页", "/travel-notes/home", <HomeOutlined />),
   getItem("游记列表", "/travel-notes/notes", <ReadOutlined />),
-  getItem("游记审核", "/travel-notes/audit/", <AuditOutlined />),
+  getItem("游记审核", "/travel-notes/audit", <AuditOutlined />),
 ];
 
 const NotesLayout = () => {
+  const dispatch = useDispatch();
+  const { role, status } = useSelector((state) => state.user);
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
 
   const onMenuClick = (route) => {
     navigate(route.key);
   };
+  const findSelectedKeys = () => {
+    const currentPath = location.pathname;
 
+    const matchedKeys = items
+      .map((item) => item.key)
+      .filter((key) => currentPath.startsWith(key))
+      .sort((a, b) => b.length - a.length);
+
+    return matchedKeys.length > 0 ? [matchedKeys[0]] : [];
+  };
   const generateBreadcrumbs = () => {
     const currentPath = location.pathname;
     const pathSegments = currentPath.split("/").filter(Boolean);
@@ -62,13 +75,22 @@ const NotesLayout = () => {
     localStorage.removeItem("adminToken");
     navigate("/login");
   };
+  useEffect(() => {
+    dispatch(loadUser());
+  }, [dispatch]);
 
+  // 根据加载状态显示不同内容
+  const renderRole = () => {
+    if (status === "loading") return "加载中...";
+    if (status === "failed") return "未登录用户";
+    return role ? `${role}` : "未知角色";
+  };
   return (
     <Layout className="main-layout">
       <Header className="fixed-header">
         <div className="logo">游记审核管理系统</div>
         <div className="header-right">
-          <span className="user-name">管理员</span>
+          <span className="user-name">{renderRole()}</span>
 
           {/* 退出确认对话框 */}
           <span className="user-logout">
@@ -94,7 +116,7 @@ const NotesLayout = () => {
         >
           <Menu
             theme="dark"
-            selectedKeys={[location.pathname]}
+            selectedKeys={findSelectedKeys()}
             onClick={onMenuClick}
             mode="inline"
             items={items}

@@ -744,6 +744,58 @@ router.post("/admin/login", (req, res) => {
 });
 
 /**
+ * 游记统计接口
+ */
+router.get("/admin/notes/stats", async (req, res) => {
+  const sql = `
+        SELECT 
+            SUM(status = 'approved' AND is_deleted = 0) as approved,
+            SUM(status = 'rejected' AND is_deleted = 0) as rejected,
+            SUM(status = 'pending' AND is_deleted = 0) as pending,
+            SUM(is_deleted = 1) as deleted
+        FROM travel_notes
+    `;
+  try {
+    const [results] = await db.promise().query(sql);
+    res.json({
+      code: 1,
+      data: results[0],
+    });
+  } catch (err) {
+    console.error("统计查询失败:", err);
+    res.status(500).json({ code: 0, message: "服务器错误" });
+  }
+});
+
+/**
+ * 用户发布排行接口
+ */
+router.get("/admin/users/stats", async (req, res) => {
+  const sql = `
+        SELECT 
+            u.username,
+            COUNT(tn.id) as count
+        FROM users u
+        LEFT JOIN travel_notes tn 
+            ON u.id = tn.user_id
+            AND tn.is_deleted = 0
+        GROUP BY u.id
+        ORDER BY count DESC
+        LIMIT 10
+    `;
+  try {
+    const [results] = await db.promise().query(sql);
+    res.json({
+      code: 1,
+      data: results,
+    });
+  } catch (err) {
+    console.error("用户统计失败:", err);
+    res.status(500).json({ code: 0, message: "服务器错误" });
+  }
+});
+
+/**
  * 管理员获取所有游记接口
  */
 router.get("/admin/notes", verifyAdminToken, async (req, res) => {
@@ -831,6 +883,9 @@ router.get("/admin/notes/:id", verifyAdminToken, async (req, res) => {
     // 处理图片数据
     const formattedNote = {
       ...notes[0],
+      video_url: notes[0].video_url
+        ? `http://localhost:3300/${notes[0].video_url.replace(/\\/g, "/")}`
+        : null,
       images: notes[0].images
         ? notes[0].images
             .split(",")

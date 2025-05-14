@@ -4,6 +4,7 @@ import ArticleCard from "@/components/ArticleCard";
 import Search from "@/components/Search";
 import formatDate from "@/utils/date";
 import { useNavigate } from "react-router-dom";
+import "./index.scss";
 
 const Notes = () => {
   const navigate = useNavigate();

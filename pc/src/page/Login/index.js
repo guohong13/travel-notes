@@ -26,7 +26,7 @@ const Login = () => {
       // console.log("登录成功", response);
       messageApi.success(successMessage);
       setTimeout(() => {
-        navigate("/travel-notes/notes");
+        navigate("/travel-notes/home");
       }, 500);
     } catch (error) {
       if (error.response) {

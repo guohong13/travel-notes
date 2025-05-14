@@ -21,7 +21,17 @@ const ArticleCard = ({
             ? baseUrl + imageUrls[0].replace(/\\/g, "/")
             : null;
         return (
-          url && <Image src={url} width={80} height={60} preview={false} />
+          url && (
+            <Image
+              src={url}
+              width={80}
+              height={60}
+              preview={false}
+              style={{
+                objectFit: "contain",
+              }}
+            />
+          )
         );
       },
     },
