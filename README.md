@@ -43,11 +43,13 @@
 │   └── pages/              # 页面代码
 ├── pc/                     # PC端相关代码
 │   ├── server/             # 后端服务
-│   │   ├── config.js       # 数据库与JWT配置
-│   │   ├── middleware/
-│   │   │   └── multerConfig.js # 文件上传中间件配置
+│   │   ├── config.js       # 数据库与后端配置
+│   │   ├── middleware/     # 中间件配置
 │   │   └── router.js       # 所有后端接口路由
 │   └── uploads/            # 上传的图片和视频文件
+│   ├── src/                # 后端代码
+│   │   ├── pages/          # pcd页面
+│   │   └── router.js       # 所有后端接口路由
 ├── README.md               # 项目说明文件
 └── package.json            # 后端依赖
 ```
