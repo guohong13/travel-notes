@@ -70,31 +70,25 @@
 
 1. **克隆项目**
    ```bash
-   git clone <your-repo-url>
-   cd <project-root>
+   git clone https://github.com/guohong13/travel-notes.git
    ```
 
 2. **安装后端依赖**
    ```bash
-   cd pc/server
+   cd pc
    npm install
    ```
 
 3. **配置数据库**
-   - 修改 `pc/server/config.js`，配置数据库连接和 JWT 密钥。
+   - 修改 `pc/server/config.js`，配置数据库连接。
 
 4. **启动后端服务**
-   ```bash
-   node app.js
-   ```
-   或
    ```bash
    npm start
    ```
 
-5. **前端开发**
-   - 移动端：使用微信开发者工具导入 `mobile/` 目录。
-   - PC端：根据实际情况配置和启动。
+5. **小程序环境依赖**
+   - 使用微信开发者工具导入 `mobile/` 目录。
 
 ## 主要接口说明
 
@@ -102,7 +96,7 @@
 
 - `POST /api/users/register` 用户注册
 - `POST /api/users/login` 用户登录
-- `GET /api/users/profile` 获取用户信息（需登录）
+- `GET /api/users/profile` 获取用户信息
 
 ### 游记相关
 
