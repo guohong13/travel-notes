@@ -118,7 +118,6 @@
 
 ## 文件上传说明
 
-- 图片和视频需先通过 `/api/upload` 上传，返回文件路径后再通过 `/api/notes` 发布游记。
 - 支持图片格式：jpg、jpeg、png、gif
 - 支持视频格式：mp4、mov、avi
 
@@ -126,8 +125,7 @@
 
 - 上传文件最大 50MB，超出会被拒绝
 - 需保证 `uploads/` 目录有写入权限
-- 所有需要登录的接口需在 header 中携带 `Authorization: Bearer <token>`
 
 ## 贡献与反馈
 
-如有建议或 bug，欢迎提 issue 或 PR。
+如有建议或 bug，欢迎提 issue。
