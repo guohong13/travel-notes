@@ -1,0 +1,10 @@
+<view class="home-card" bind:tap="details">
+  <t-image t-class="home-card__image" src="{{url}}" mode="aspectFill" />
+  <view class="home-card__info">
+    <text class="home-card__text">{{desc}}</text>
+    <view class="home-card__user-info">
+      <t-image t-class="home-card__avatar" src="{{avatar}}" mode="aspectFill" />
+      <text class="home-card__nickname">{{nickname}}</text>
+    </view>
+  </view>
+</view>

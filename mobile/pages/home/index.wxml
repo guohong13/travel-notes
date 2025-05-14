@@ -1,0 +1,32 @@
+<!-- 导航栏 -->
+<nav nav-type="search" class="sticky-nav" />
+
+<!-- 内容区域 -->
+<view class="home-container">
+  <view class="home-content" style="height: 1279rpx; display: block; box-sizing: border-box">
+    <!-- 增加一个空的占位元素，用于保持布局 -->
+    <view class="sticky-placeholder" style="height: {{stickyHeight}}px;"></view>
+    <t-tabs defaultValue="recommend">
+      <t-tab-panel label="游记列表" class="sticky-nav" value="recommend">
+        <t-pull-down-refresh
+          value="{{enable}}"
+          bind:refresh="onRefresh"
+          loadingTexts="{{['下拉刷新', '松手刷新', '正在刷新', '刷新完成']}}"
+        >
+        <view class="home-card-list" style="height: 1187rpx; display: flex; box-sizing: border-box; width: 750rpx">
+            <card
+              wx:for="{{cardInfo}}"
+              wx:key="index"
+              desc="{{item.desc}}"
+              url="{{item.coverImage}}"
+              avatar= "{{item.avatar}}"
+              nickname= "{{item.nickname}}"
+              bind:tap="onTapCard"
+              data-item="{{item}}"
+            />
+          </view>
+        </t-pull-down-refresh>
+      </t-tab-panel>
+    </t-tabs>
+  </view>
+</view>

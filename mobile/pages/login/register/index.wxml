@@ -1,0 +1,32 @@
+<t-navbar left-arrow title="用户注册"/>
+<view class="register-container">
+  <view class="avatar-section">
+    <image class="avatar" src="{{avatarUrl}}" mode="aspectFill"></image>
+    <view class="upload-btn" bindtap="chooseAvatar">更换头像</view>
+  </view>
+
+  <view class="input-section">
+  <view class="input-item">
+    <t-input placeholder="请输入用户名" model:value="{{username}}">
+      <view slot="label" class="input-label">用户名</view>
+    </t-input>
+
+    <t-input placeholder="请输入用户昵称" model:value="{{nickname}}">
+      <view slot="label" class="input-label">用户昵称</view>
+    </t-input>
+
+    <t-input type="password" placeholder="请输入密码" model:value="{{password}}">
+      <view slot="label" class="input-label">输入密码</view>
+    </t-input>
+
+    <t-input type="password" placeholder="请确认密码" model:value="{{confirmPassword}}">
+      <view slot="label" class="input-label">确认密码</view>
+    </t-input>
+  </view>
+</view>
+
+
+  <view class="btn-section">
+    <t-button class="register-btn" bindtap="handleRegister" theme="primary" size="large" >注册</t-button>
+  </view>
+</view> 

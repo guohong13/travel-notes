@@ -1,0 +1,56 @@
+.register-container {
+  padding: 32rpx;
+
+  .avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 48rpx;
+
+    .avatar {
+      width: 160rpx;
+      height: 160rpx;
+      border-radius: 50%;
+      background-color: #ffff;
+      border: 2rpx solid #ddd;
+    }
+
+    .upload-btn {
+      margin-top: 20rpx;
+      color: #1e90ff;
+      font-size: 28rpx;
+      cursor: pointer;
+    }
+  }
+
+  .input-section {
+    .input-item {
+      display: flex;
+      flex-direction: column;
+      gap: 24rpx;
+
+      .input-label {
+        font-size: 28rpx;
+        color: #333;
+        margin-bottom: 8rpx;
+      }
+
+      ::v-deep .t-input {
+        background-color: rgb(207, 199, 199);
+        border-radius: 12rpx;
+        padding: 0 16rpx;
+      }
+    }
+  }
+
+  .btn-section {
+    margin-top: 48rpx;
+
+    .register-btn {
+      width: 100%;
+      border-radius: 12rpx;
+      font-size: 32rpx;
+      padding: 20rpx 0;
+    }
+  }
+}

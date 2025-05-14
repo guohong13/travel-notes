@@ -1,0 +1,77 @@
+.login {
+  &__title {
+    color: rgba(0, 0, 0, 0.9);
+    font-size: 56rpx;
+    font-weight: 600;
+    line-height: 72rpx;
+    padding: 16rpx 32rpx 40rpx;
+  }
+
+  &__content {
+    padding: 0 32rpx;
+  }
+
+  &__input {
+    margin-bottom: 40rpx;
+  }
+
+  &__tips {
+    color: rgba(0, 0, 0, 0.4);
+    font-size: 24rpx;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 40rpx;
+    margin: 24rpx 32rpx 32rpx;
+  }
+
+  &__button {
+    margin: 48rpx 0;
+  }
+
+  &__others {
+    margin: 64rpx 32rpx auto 32rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &-buttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .button {
+        margin: 0 !important;
+        min-width: 200rpx;
+      }
+    }
+  }
+
+  // 覆盖组件样式
+  .radio-class {
+    --td-radio-icon-size: 32rpx;
+    --td-radio-label-line-height: 40rpx;
+    align-items: center;
+  }
+
+  .radio-class-icon {
+    margin-top: 0 !important;
+  }
+
+  .radio-class-label {
+    margin-left: 8rpx !important;
+    font-size: 24rpx !important;
+    line-height: 40rpx !important;
+  }
+
+  &__register-tip {
+    text-align: center;
+    font-size: 28rpx;
+    color: rgba(0, 0, 0, 0.6);
+    margin-top: 32rpx;
+
+    .register-link {
+      color: #0052d9;
+      margin-left: 8rpx;
+    }
+  }
+}

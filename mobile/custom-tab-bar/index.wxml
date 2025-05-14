@@ -1,0 +1,6 @@
+<t-tab-bar value="{{ value }}" theme="tag" split="{{ false }}" bind:change="switchTab">
+  <t-tab-bar-item wx:for="{{ list }}" wx:key="value"
+    icon="{{ item.icon }}"
+    value="{{ item.value }}"
+  >{{ item.text }}</t-tab-bar-item>
+</t-tab-bar>
