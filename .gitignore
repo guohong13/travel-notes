@@ -2,6 +2,7 @@
 
 # dependencies
 pc/node_modules
+pc/server/uploads
 mobile/node_modules
 
 # misc
