@@ -9,5 +9,7 @@ const db = mysql.createPool({
   database: "travel-notes",
 });
 
+// JWT配置
 const jwtSecret = "cughpscil";
+
 module.exports = { db, jwtSecret };

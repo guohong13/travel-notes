@@ -1,11 +1,14 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const { db, jwtSecret } = require("./config");
+const { db, jwtSecret, public_key, private_key } = require("./config");
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
+const NodeRSA = require("node-rsa");
+const crypto = require("crypto");
 const verifyUserToken = require("./middleware/userAuth");
 const verifyAdminToken = require("./middleware/adminAuth");
+// const decryptPassword = require("./middleware/decrypt");
 const upload = require("./middleware/multerConfig");
 
 // 登录频率限制
