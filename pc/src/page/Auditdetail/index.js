@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, Spin, Image, Tag, Button, message, Modal, Input } from "antd";
 import { useDispatch, useSelector } from "react-redux";
-import axios from "axios";
 import formatDate from "@/utils/date";
 import "./index.scss";
+import { notesAPI } from "@/apis";
 
 const AuditDetail = () => {
   const { id } = useParams();
@@ -14,47 +14,63 @@ const AuditDetail = () => {
   const [rejectVisible, setRejectVisible] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
-  const [deleteErrorVisible, setDeleteErrorVisible] = useState(false);
   const [approveConfirmVisible, setApproveConfirmVisible] = useState(false);
-  const [approveVisible, setApproveErrorVisible] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const { role } = useSelector((state) => state.user);
   const userIsAdmin = role === "admin";
-  const token = localStorage.getItem("adminToken");
 
   useEffect(() => {
-    const controller = new AbortController();
-
     const fetchNoteDetail = async () => {
       try {
-        const response = await axios.get(
-          `http://localhost:3300/api/admin/notes/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            signal: controller.signal,
-          }
-        );
-
-        if (response.data.code === 1) {
-          setNoteDetail(response.data.data);
-        } else {
-          message.error("获取数据失败");
-        }
+        const data = await notesAPI.getNoteDetail(id);
+        setNoteDetail(data.data);
       } catch (error) {
-        if (!axios.isCancel(error)) {
-          message.error("获取数据时发生错误");
-        }
+        message.error("获取数据失败");
       } finally {
         setLoading(false);
       }
     };
 
     fetchNoteDetail();
-
-    return () => controller.abort();
   }, [id]);
+
+  const handleApprove = async () => {
+    try {
+      await notesAPI.approveNote(id);
+      message.success("游记已通过");
+      setTimeout(() => navigate("/travel-notes/notes"), 1000);
+    } catch (error) {
+      message.error(error.message);
+    }
+  };
+
+  const handleReject = async (reason) => {
+    try {
+      await notesAPI.rejectNote(id, reason);
+      message.success("已拒绝审核");
+      setNoteDetail((prev) => ({
+        ...prev,
+        status: "rejected",
+        reject_reason: reason,
+        updated_at: new Date().toISOString(),
+      }));
+      setTimeout(() => navigate("/travel-notes/notes"), 1000);
+    } catch (error) {
+      message.error(error.message);
+    } finally {
+      setRejectVisible(false);
+      setRejectReason("");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await notesAPI.deleteNote(id);
+      message.success("游记已删除");
+      setTimeout(() => navigate("/travel-notes/notes"), 1000);
+    } catch (error) {
+      message.error(error.message);
+    }
+  };
 
   if (loading) {
     return <Spin size="large" className="loading-spinner" />;
@@ -63,97 +79,6 @@ const AuditDetail = () => {
   if (!noteDetail) {
     return <div className="error-message">未找到相关游记信息</div>;
   }
-
-  // 处理通过审核的请求
-  const handleApprove = async () => {
-    try {
-      const response = await axios.put(
-        `http://localhost:3300/api/notes/approve/${id}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.data.code === 1) {
-        message.success("游记已通过");
-        setTimeout(() => {
-          navigate("/travel-notes/notes");
-        }, 1000);
-      } else {
-        setErrorMessage(response.data.message || "操作失败");
-        setApproveErrorVisible(true);
-      }
-    } catch (error) {
-      message.error(error.response?.data?.message || "请求失败");
-    }
-  };
-
-  // 处理拒绝审核的请求
-  const handleReject = async (reason) => {
-    try {
-      const response = await axios.put(
-        `http://localhost:3300/api/notes/reject/${id}`,
-        { rejectReason: reason },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.data.code === 1) {
-        message.success("已拒绝审核");
-        setNoteDetail((prev) => ({
-          ...prev,
-          status: "rejected",
-          reject_reason: reason,
-          updated_at: new Date().toISOString(),
-        }));
-        setTimeout(() => {
-          navigate("/travel-notes/notes");
-        }, 1000);
-      } else {
-        message.error(response.data.message || "操作失败");
-      }
-    } catch (error) {
-      message.error(error.response?.data?.message || "请求失败");
-    } finally {
-      setRejectVisible(false);
-      setRejectReason("");
-    }
-  };
-
-  // 删除处理函数
-  const handleDelete = async () => {
-    try {
-      const response = await axios.delete(
-        `http://localhost:3300/api/notes/delete/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      if (response.data.code === 1) {
-        message.success("游记已删除");
-        setTimeout(() => {
-          navigate("/travel-notes/notes");
-        }, 1000);
-      } else {
-        setErrorMessage(response.data.message || "删除失败");
-        setDeleteErrorVisible(true);
-      }
-    } catch (error) {
-      message.error(error.response?.data?.message || "请求失败");
-    }
-  };
-
-  const showRejectModal = () => {
-    setRejectVisible(true);
-  };
 
   return (
     <Card
@@ -168,11 +93,13 @@ const AuditDetail = () => {
               : "red"
           }
         >
-          {noteDetail.status === "pending"
-            ? "待审核"
-            : noteDetail.status === "approved"
-            ? "已通过"
-            : "未通过"}
+          {
+            {
+              pending: "待审核",
+              approved: "已通过",
+              rejected: "未通过",
+            }[noteDetail.status]
+          }
         </Tag>
       }
       actions={[
@@ -187,53 +114,50 @@ const AuditDetail = () => {
         <Button
           key="reject"
           type="primary"
-          onClick={showRejectModal}
+          onClick={() => setRejectVisible(true)}
           disabled={noteDetail.status === "rejected"}
         >
           拒绝
         </Button>,
-        <Button
-          key="delete"
-          type="primary"
-          danger
-          onClick={() => setDeleteConfirmVisible(true)}
-          // 添加权限判断
-          disabled={!userIsAdmin}
-          title={!userIsAdmin ? "需要管理员权限" : ""}
-        >
-          删除
-        </Button>,
+        userIsAdmin && (
+          <Button
+            key="delete"
+            type="primary"
+            danger
+            onClick={() => setDeleteConfirmVisible(true)}
+            title="需要管理员权限"
+          >
+            删除
+          </Button>
+        ),
       ].filter(Boolean)}
     >
-      {/* 删除确认弹窗 */}
+      {/* 弹窗组件 */}
       <Modal
         title="确认删除"
-        visible={deleteConfirmVisible}
+        open={deleteConfirmVisible}
         onOk={handleDelete}
         onCancel={() => setDeleteConfirmVisible(false)}
         okText="确认删除"
         cancelText="取消"
       >
-        {" "}
         <p style={{ fontSize: 16 }}>⚠️ 确定要删除这篇游记吗？</p>
       </Modal>
-      {/* 通过确认弹窗 */}
+
       <Modal
         title="确认通过"
-        visible={approveConfirmVisible}
+        open={approveConfirmVisible}
         onOk={handleApprove}
         onCancel={() => setApproveConfirmVisible(false)}
         okText="确认通过"
         cancelText="取消"
       >
-        {" "}
         <p style={{ fontSize: 16 }}>✔️ 确定要通过这篇游记吗？</p>
       </Modal>
 
-      {/* 添加拒绝原因弹窗 */}
       <Modal
         title="请输入拒绝原因"
-        visible={rejectVisible}
+        open={rejectVisible}
         onCancel={() => setRejectVisible(false)}
         onOk={() => {
           if (!rejectReason.trim()) {
@@ -253,8 +177,8 @@ const AuditDetail = () => {
         />
       </Modal>
 
+      {/* 内容展示部分 */}
       <div className="audit-content">
-        {/* 左侧媒体区域 */}
         <div className="left-panel">
           <div className="media-section">
             <h3>游记图片</h3>
@@ -279,7 +203,6 @@ const AuditDetail = () => {
           )}
         </div>
 
-        {/* 右侧内容区域 */}
         <div className="right-panel">
           <div className="title-section">
             <h3>{noteDetail.title}</h3>
@@ -296,6 +219,12 @@ const AuditDetail = () => {
           <div className="meta-info">
             <span>创建时间：{formatDate(noteDetail.created_at)}</span>
             <span>最后更新时间：{formatDate(noteDetail.updated_at)}</span>
+            {noteDetail.reject_reason && (
+              <div className="reject-reason">
+                <h4>拒绝原因：</h4>
+                <p>{noteDetail.reject_reason}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,3 @@
-// 404页
-
 import React from "react";
 import "./index.scss";
 

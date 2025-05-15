@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { notesAPI } from "@/apis";
 import ArticleCard from "@/components/ArticleCard";
 import Search from "@/components/Search";
 import formatDate from "@/utils/date";
@@ -20,36 +20,24 @@ const Notes = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await axios.get(
-        "http://localhost:3300/api/notes/admin/filter",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          params: {
-            ...filters,
-            page: data.page,
-            pageSize: data.pageSize,
-          },
-        }
-      );
+      const response = await notesAPI.getNotes({
+        ...filters,
+        page: data.page,
+        pageSize: data.pageSize,
+      });
+      const formatted = response.data.list.map((item) => ({
+        ...item,
+        id: item.id,
+        created_at: formatDate(item.created_at),
+        updated_at: formatDate(item.updated_at),
+      }));
 
-      if (response.data.code === 1) {
-        const formatted = response.data.data.list.map((item) => ({
-          ...item,
-          id: item.id,
-          created_at: formatDate(item.created_at),
-          updated_at: formatDate(item.updated_at),
-        }));
-
-        setData({
-          list: formatted,
-          total: response.data.data.total,
-          page: response.data.data.page,
-          pageSize: response.data.data.pageSize,
-        });
-      }
+      setData({
+        list: formatted,
+        total: response.data.total,
+        page: response.page,
+        pageSize: response.pageSize,
+      });
     } catch (err) {
       console.error("加载数据失败:", err);
     } finally {

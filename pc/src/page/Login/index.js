@@ -5,7 +5,7 @@ import "./index.scss";
 import { Button, Form, Input, Card, message } from "antd";
 import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { authAPI } from "@/apis";
 
 const Login = () => {
   const [passwordVisible, setPasswordVisible] = React.useState(false);
@@ -13,18 +13,14 @@ const Login = () => {
   const navigate = useNavigate();
   const onFinish = async (values) => {
     try {
-      const response = await axios.post(
-        "http://localhost:3300/api/admin/login",
-        {
-          username: values.username,
-          password: values.password,
-        }
-      );
-      // 保存 token 到 localStorage
-      localStorage.setItem("adminToken", response.data.data.token);
-      const successMessage = response.data.message;
-      // console.log("登录成功", response);
-      messageApi.success(successMessage);
+      const response = await authAPI.login({
+        username: values.username,
+        password: values.password,
+      });
+
+      localStorage.setItem("adminToken", response.data.token);
+      messageApi.success(response.message);
+
       setTimeout(() => {
         navigate("/travel-notes/home");
       }, 500);

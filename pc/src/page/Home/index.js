@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { Card, Spin, Alert } from "antd";
-import axios from "axios";
+import { notesAPI } from "@/apis";
 import "./index.scss";
 
 const Home = () => {
@@ -15,26 +15,14 @@ const Home = () => {
     const fetchData = async () => {
       try {
         const [statsRes, userRes] = await Promise.all([
-          axios.get("http://localhost:3300/api/admin/notes/stats", {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-            },
-          }),
-          axios.get("http://localhost:3300/api/admin/users/stats", {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-            },
-          }),
+          notesAPI.getStats(),
+          notesAPI.getUserRanking(),
         ]);
 
-        if (statsRes.data.code === 1 && userRes.data.code === 1) {
-          setStats(statsRes.data.data);
-          setUserStats(userRes.data.data);
-        } else {
-          setError("数据获取失败");
-        }
+        setStats(statsRes.data);
+        setUserStats(userRes.data);
       } catch (err) {
-        setError("网络请求失败");
+        setError("数据获取失败");
       } finally {
         setLoading(false);
       }

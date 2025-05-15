@@ -1,5 +1,3 @@
-// NotesLayout.jsx
-
 import {
   HomeOutlined,
   AuditOutlined,
