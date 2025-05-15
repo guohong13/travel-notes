@@ -13,6 +13,7 @@ const AuditDetail = () => {
   const [noteDetail, setNoteDetail] = useState(null);
   const [rejectVisible, setRejectVisible] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [messageApi, contextHolder] = message.useMessage();
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [approveConfirmVisible, setApproveConfirmVisible] = useState(false);
   const { role } = useSelector((state) => state.user);
@@ -24,7 +25,7 @@ const AuditDetail = () => {
         const data = await notesAPI.getNoteDetail(id);
         setNoteDetail(data.data);
       } catch (error) {
-        message.error("获取数据失败");
+        messageApi.error("获取数据失败");
       } finally {
         setLoading(false);
       }
@@ -36,17 +37,17 @@ const AuditDetail = () => {
   const handleApprove = async () => {
     try {
       await notesAPI.approveNote(id);
-      message.success("游记已通过");
+      messageApi.success("游记已通过");
       setTimeout(() => navigate("/travel-notes/notes"), 1000);
     } catch (error) {
-      message.error(error.message);
+      messageApi.error(error.message);
     }
   };
 
   const handleReject = async (reason) => {
     try {
       await notesAPI.rejectNote(id, reason);
-      message.success("已拒绝审核");
+      messageApi.success("游记未通过");
       setNoteDetail((prev) => ({
         ...prev,
         status: "rejected",
@@ -55,7 +56,7 @@ const AuditDetail = () => {
       }));
       setTimeout(() => navigate("/travel-notes/notes"), 1000);
     } catch (error) {
-      message.error(error.message);
+      messageApi.error(error.message);
     } finally {
       setRejectVisible(false);
       setRejectReason("");
@@ -65,10 +66,10 @@ const AuditDetail = () => {
   const handleDelete = async () => {
     try {
       await notesAPI.deleteNote(id);
-      message.success("游记已删除");
+      messageApi.success("游记已删除");
       setTimeout(() => navigate("/travel-notes/notes"), 1000);
     } catch (error) {
-      message.error(error.message);
+      messageApi.error(error.message);
     }
   };
 
@@ -132,6 +133,7 @@ const AuditDetail = () => {
         ),
       ].filter(Boolean)}
     >
+      {contextHolder}
       {/* 弹窗组件 */}
       <Modal
         title="确认删除"
