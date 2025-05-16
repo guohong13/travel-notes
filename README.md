@@ -27,7 +27,15 @@
 - 游记详情页面
 - 我的游记页面
 
-![小程序注册](https://github.com/guohong13/travel-notes/blob/main/assets/%E5%B0%8F%E7%A8%8B%E5%BA%8F%E6%B3%A8%E5%86%8C.png)![小程序登入](https://github.com/guohong13/travel-notes/blob/main/assets/%E5%B0%8F%E7%A8%8B%E5%BA%8F%E7%99%BB%E5%85%A5.png)![游记列表](https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E5%88%97%E8%A1%A8.png)![游记发布](https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E5%8F%91%E5%B8%83.png)![游记搜索](https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E6%90%9C%E7%B4%A2.png)![我的游记](https://github.com/guohong13/travel-notes/blob/main/assets/%E6%88%91%E7%9A%84%E6%B8%B8%E8%AE%B0.png)![游记详情](https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E8%AF%A6%E6%83%85.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E5%B0%8F%E7%A8%8B%E5%BA%8F%E6%B3%A8%E5%86%8C.png" height="400"/>
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E5%B0%8F%E7%A8%8B%E5%BA%8F%E7%99%BB%E5%85%A5.png" height="400"/>
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E6%B8%B8%E8%AE%B0%E5%88%97%E8%A1%A8.png" height="400"/>
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E6%B8%B8%E8%AE%B0%E5%8F%91%E5%B8%83.png" height="400"/>
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E6%B8%B8%E8%AE%B0%E6%90%9C%E7%B4%A2.png" height="400"/>
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E6%88%91%E7%9A%84%E6%B8%B8%E8%AE%B0.png" height="400"/>
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E6%B8%B8%E8%AE%B0%E8%AF%A6%E6%83%85.png" height="400"/>
+</p>
 
 ### 后台管理系统界面
 
