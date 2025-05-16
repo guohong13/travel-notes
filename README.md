@@ -39,6 +39,14 @@
   <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E6%B8%B8%E8%AE%B0%E8%AF%A6%E6%83%85.png" height="300"/>
   <img src="https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E7%BC%96%E8%BE%91.png" height="300"/>
 </p>
+<p>
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E5%AE%A1%E6%A0%B8%E7%99%BB%E5%85%A5.png" width="300"/>
+  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E5%AE%A1%E6%A0%B8%E9%A6%96%E9%A1%B5.png" width="300"/>
+</p>
+<p>
+  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E5%88%97%E8%A1%A82.png?raw=true" width="300"/>
+  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E5%AE%A1%E6%A0%B8.png?raw=true" width="300"/>
+</p>
 
 ### 后台管理系统界面
 
