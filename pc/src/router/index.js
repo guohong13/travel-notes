@@ -1,36 +1,57 @@
 // 路由配置
 
-import NotesLayout from "@/page/Layout";
-import Home from "@/page/Home";
-import Notes from "@/page/Notes";
-import AuditDetail from "@/page/Auditdetail";
-import Login from "@/page/Login";
-import NotFoundPage from "@/page/NotFound";
-import { createBrowserRouter } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
-// 配置路由实例
+// 懒加载
+const NotesLayout = lazy(() => import("@/page/Layout"));
+const Home = lazy(() => import("@/page/Home"));
+const Notes = lazy(() => import("@/page/Notes"));
+const AuditDetail = lazy(() => import("@/page/Auditdetail"));
+const Login = lazy(() => import("@/page/Login"));
+const NotFoundPage = lazy(() => import("@/page/NotFound"));
+
+const withSuspense = (Component) => (
+  <Suspense fallback={<div>页面加载中...</div>}>
+    <Component />
+  </Suspense>
+);
 
 const router = createBrowserRouter([
   {
+    path: "/",
+    element: <Navigate to="/travel-notes/home" replace />,
+  },
+  {
     path: "/travel-notes",
-    element: <NotesLayout />,
+    element: withSuspense(NotesLayout),
     children: [
-      { path: "home", element: <Home /> },
-
-      { path: "notes", element: <Notes /> },
-
+      {
+        path: "home",
+        element: withSuspense(Home),
+      },
+      {
+        path: "notes",
+        element: withSuspense(Notes),
+      },
       {
         path: "audit/:id",
-        element: <AuditDetail />,
+        element: withSuspense(AuditDetail),
       },
-
       {
         path: "audit",
-        element: <AuditDetail />,
+        element: withSuspense(AuditDetail),
       },
     ],
   },
-  { path: "/login", element: <Login /> },
-  { path: "*", element: <NotFoundPage /> },
+  {
+    path: "/login",
+    element: withSuspense(Login),
+  },
+  {
+    path: "*",
+    element: withSuspense(NotFoundPage),
+  },
 ]);
+
 export default router;

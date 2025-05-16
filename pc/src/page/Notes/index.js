@@ -20,24 +20,28 @@ const Notes = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await notesAPI.getNotes({
+      const params = {
         ...filters,
         page: data.page,
         pageSize: data.pageSize,
-      });
-      const formatted = response.data.list.map((item) => ({
-        ...item,
-        id: item.id,
-        created_at: formatDate(item.created_at),
-        updated_at: formatDate(item.updated_at),
-      }));
+      };
 
-      setData({
-        list: formatted,
+      // console.log("API请求参数:", params);
+
+      const response = await notesAPI.getNotes(params);
+
+      // console.log("API响应数据:", response.data);
+
+      setData((prev) => ({
+        ...prev,
+        list: response.data.list.map((item) => ({
+          ...item,
+          id: item.id,
+          created_at: formatDate(item.created_at),
+          updated_at: formatDate(item.updated_at),
+        })),
         total: response.data.total,
-        page: response.page,
-        pageSize: response.pageSize,
-      });
+      }));
     } catch (err) {
       console.error("加载数据失败:", err);
     } finally {
@@ -53,10 +57,8 @@ const Notes = () => {
     navigate(`/travel-notes/audit/${record.id}`);
   };
 
-  // console.log(data.list);
-
   return (
-    <div>
+    <div className="notes-page">
       <Search
         onFilter={(params) => {
           setFilters(params);
@@ -70,6 +72,8 @@ const Notes = () => {
           current: data.page,
           pageSize: data.pageSize,
           total: data.total,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50"],
         }}
         onPageChange={(pagination) => {
           setData((prev) => ({
