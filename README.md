@@ -42,7 +42,7 @@
 .travel-notes
 ├── assets/                  # 其他内容
 │   ├── createDatabase.sql   # 创建数据库
-│   └── ...                  # 其他
+│   └── adminRegister.html   # 管理员注册
 ├── mobile/                  # 移动端前端代码
 │   ├── api/                 # 前端接口请求封装
 │   ├── behaviors/           # 小程序行为封装
