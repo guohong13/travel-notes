@@ -8,7 +8,7 @@ import { Breadcrumb, Layout, Menu, Popconfirm } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { loadUser, clearUser } from "@/Store/userSlice";
+import { loadUser, clearUser } from "@/store/userSlice";
 import "./index.scss";
 
 const { Header, Content, Sider } = Layout;
