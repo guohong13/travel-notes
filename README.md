@@ -40,11 +40,15 @@
 
 ```
 .travel-notes
+├── assets/                  # 其他内容
+│   ├── createDatabase.sql   # 创建数据库
+│   └── ...                  # 其他
 ├── mobile/                  # 移动端前端代码
 │   ├── api/                 # 前端接口请求封装
 │   ├── behaviors/           # 小程序行为封装
 │   ├── components/          # 封装的组件
 │   ├── pages/               # 页面代码
+│   ├── utils/               # 封装的工具
 │   ├── config.js            # 移动端配置文件
 │   └── project.config.json  # 小程序项目配置文件
 ├── pc/                      # PC 端与后端相关代码
@@ -95,7 +99,7 @@
 3. **配置数据库**
 
    - 修改 `pc/server/config.js`，配置数据库连接。
-   - 执行 `createDatabase.sql` 文件
+   - 执行 `createDatabase.sql` 文件。
 
 4. **启动后端服务**
 
@@ -151,14 +155,18 @@
 
 ## 文件上传说明
 
-- 支持图片格式：jpg、jpeg、png、gif
-- 支持视频格式：mp4、mov、avi
+- 支持图片格式：jpg、jpeg、png、gif。
+- 支持视频格式：mp4、mov、avi。
 
 ## 注意事项
 
-- 上传文件最大 50MB，超出会被拒绝
-- 需保证 `uploads/` 目录有写入权限
+- 上传文件最大 50MB，超出会被拒绝。
+- 需保证 `uploads/` 目录有写入权限。
 
 ## 贡献与反馈
 
 如有建议或 bug，欢迎提 issue。
+
+## 鸣谢
+
+@xiamian225
