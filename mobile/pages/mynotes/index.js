@@ -5,6 +5,7 @@ import {
 import {
   userApi
 } from '~/api/request';
+
 // 路径处理函数
 const processResourcePath = (path) => {
   if (!path) return '';
@@ -17,11 +18,14 @@ const processResourcePath = (path) => {
        .replace(/\/+/g, '/')      // 合并连续斜杠
   }`;
 };
+
+// 状态映射
 const statusMap = {
   approved: '已通过',
   rejected: '未通过',
   pending: '待审核'
 };
+// 颜色映射
 const statusStyleMap = {
   approved: {
     bg: '#e6f4ea', // 浅绿色背景
@@ -41,10 +45,6 @@ const statusStyleMap = {
   }
 };
 Page({
-
-  /**
-   * 页面的初始数据
-   */
   data: {
     notesList: []
   },
@@ -52,10 +52,6 @@ Page({
   async onReady() {
     await this.loadNotesList();
   },
-
-  /**
-   * 生命周期函数--监听页面加载
-   */
   async onLoad() {
     await this.loadNotesList();
   },
@@ -99,7 +95,7 @@ Page({
           //   avatar: note.avatar || '/assets/images/default-avatar.png',
           //   nickname: note.nickname || '游客'
         }));
-        console.log("noteslist:", notesList)
+        // console.log("noteslist:", notesList)
         this.setData({
           notesList,
           isEmpty: notesList.length === 0
@@ -134,6 +130,15 @@ Page({
     }
   },
 
+  onShowRejectReason(e) {
+    const reason = e.detail.reason;
+    wx.showModal({
+      title: '未通过原因',
+      content: reason,
+      showCancel: false,
+      confirmText: '知道了'
+    })
+  },
   onDeleteTravelNote(e) {
     const {
       travelNote
@@ -206,7 +211,7 @@ Page({
 
     // 将游记数据编码后传递到编辑页面
     const url = `/pages/edit/index?data=${encodeURIComponent(JSON.stringify(editData))}`;
-    console.log('跳转URL:', url);
+    // console.log('跳转URL:', url);
     wx.navigateTo({
       url,
       fail: (err) => {
@@ -218,14 +223,13 @@ Page({
       }
     });
   },
+
   onBackToHome() {
     wx.switchTab({
       url: '/pages/home/index',
     });
   },
-  /**
-   * 生命周期函数--监听页面显示
-   */
+
   onShow() {
     const token = wx.getStorageSync('access_token');
 
@@ -247,18 +251,11 @@ Page({
     }
   },
 
-  /**
-   * 生命周期函数--监听页面隐藏
-   */
+ 
   onHide() {
-
   },
 
-  /**
-   * 生命周期函数--监听页面卸载
-   */
   onUnload() {
-
   },
 
   /**

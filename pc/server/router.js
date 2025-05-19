@@ -286,101 +286,109 @@ router.post("/notes", verifyUserToken, async (req, res) => {
 /**
  * 用户修改游记接口
  */
-router.put(
-  "/notes/modify/:id",
-  verifyUserToken,
-  upload.fields([
-    { name: "images", maxCount: 10 },
-    { name: "video", maxCount: 1 },
-  ]),
-  async (req, res) => {
-    const { id } = req.params; //获取请求参数里的游记id
-    const { title, content } = req.body;
-    const userId = req.user.id;
+router.put("/notes/modify/:id", verifyUserToken, async (req, res) => {
+  const { id } = req.params;
+  const { title, content, images, video_url } = req.body;
+  const userId = req.user.id;
 
-    try {
-      // 验证游记归属权
-      const [existing] = await db
-        .promise()
-        .query(
-          "SELECT id, video_url FROM travel_notes WHERE id = ? AND user_id = ? AND is_deleted = 0",
-          [id, userId]
-        );
+  try {
+    // 验证游记归属权
+    const [existing] = await db
+      .promise()
+      .query(
+        "SELECT id, video_url FROM travel_notes WHERE id = ? AND user_id = ? AND is_deleted = 0",
+        [id, userId]
+      );
 
-      if (!existing.length) {
-        return res.status(404).json({
-          code: 0,
-          message: "游记不存在或没有修改权限",
-          data: null,
-        });
-      }
-
-      // 开启事务
-      const connection = await db.promise().getConnection();
-      await connection.beginTransaction();
-
-      try {
-        // 更新主表数据
-        const updateFields = {
-          title,
-          content,
-          status: "pending",
-          updated_at: new Date(),
-        };
-
-        // 处理新上传视频
-        if (req.files["video"]) {
-          const videoFile = req.files["video"][0];
-          updateFields.video_url = videoFile.path;
-        }
-
-        await connection.query(
-          "UPDATE travel_notes SET ? WHERE id = ? AND is_deleted = 0",
-          [updateFields, id]
-        );
-
-        // 删除旧图片(逻辑删除)，添加新图片
-        if (req.files["images"]) {
-          await connection.query(
-            "UPDATE note_images SET is_deleted = 1 WHERE travel_notes_id = ? AND is_deleted = 0",
-            [id]
-          );
-          const values = req.files["images"].map((f) => [id, f.path, 0]);
-          await connection.query(
-            "INSERT INTO note_images (travel_notes_id, image_url, is_deleted) VALUES ?",
-            [values]
-          );
-        }
-
-        // 提交事务
-        await connection.commit();
-
-        return res.status(201).json({
-          code: 1,
-          message: "修改成功",
-          data: null,
-        });
-
-        // 回滚事务
-      } catch (transactionErr) {
-        await connection.rollback();
-        return res.status(500).json({
-          code: 0,
-          message: "修改失败",
-          data: null,
-        });
-      } finally {
-        connection.release();
-      }
-    } catch (err) {
-      return res.status(500).json({
+    if (!existing.length) {
+      return res.status(404).json({
         code: 0,
-        message: "服务器内部错误",
+        message: "游记不存在或没有修改权限",
         data: null,
       });
     }
+
+    // 校验请求体
+    if (!title || !content) {
+      return res.status(400).json({
+        code: 0,
+        message: "标题和内容为必填项",
+        data: null,
+      });
+    }
+
+    if (!images || images.length === 0) {
+      return res.status(400).json({
+        code: 0,
+        message: "请至少上传一张图片",
+        data: null,
+      });
+    }
+
+    // 开启事务
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 更新主表数据
+      const updateFields = {
+        title,
+        content,
+        video_url: video_url || null,
+        status: "pending",
+        updated_at: new Date(),
+      };
+
+      await connection.query(
+        "UPDATE travel_notes SET ? WHERE id = ? AND is_deleted = 0",
+        [updateFields, id]
+      );
+
+      // 先删除所有旧图片（逻辑删除）
+      await connection.query(
+        "UPDATE note_images SET is_deleted = 1 WHERE travel_notes_id = ? AND is_deleted = 0",
+        [id]
+      );
+
+      // 添加新图片
+      const imageValues = images.map((image) => [id, image, 0]);
+      const addImagesSql =
+        "INSERT INTO note_images (travel_notes_id, image_url, is_deleted) VALUES ?";
+      await connection.query(addImagesSql, [imageValues]);
+
+      // 提交事务
+      await connection.commit();
+
+      return res.status(201).json({
+        code: 1,
+        message: "修改成功",
+        data: {
+          id,
+          title,
+          content,
+          images,
+          video: video_url,
+        },
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      console.error("修改失败:", transactionErr);
+      return res.status(500).json({
+        code: 0,
+        message: "修改失败: " + transactionErr.message,
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
   }
-);
+});
 
 /**
  * 用户删除游记接口(更新状态实现逻辑删除)
@@ -1150,7 +1158,7 @@ router.put("/notes/reject/:id", verifyAdminToken, async (req, res) => {
 /**
  * 管理员删除待审核游记接口
  */
-router.delete("/notes/delete/:id", verifyAdminToken, async (req, res) => {
+router.delete("/admin/notes/delete/:id", verifyAdminToken, async (req, res) => {
   const { id } = req.params;
   const { role } = req.admin;
   try {

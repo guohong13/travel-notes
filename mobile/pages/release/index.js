@@ -1,8 +1,6 @@
-// pages/release/index.js
-
 import {
   notesApi
-} from '~/api/request';
+} from '\~/api/request';
 
 Page({
   /**
@@ -18,7 +16,6 @@ Page({
         marginRight: '16rpx'
       }
     },
-
     config: {
       count: 9,
       mediaType: ['image', 'video'],
@@ -26,7 +23,7 @@ Page({
       maxDuration: 60,
       camera: 'back',
       compressed: true,
-      maxCount: 12,
+      maxCount: 9,
       videoSize: 50,
       videoQuality: 'medium',
       sizeType: ['original', 'compressed'],
@@ -39,7 +36,11 @@ Page({
     title: '',
     content: '',
     tempVideoUrl: '',
+    videoIndex: -1,
+    draftSaved: false,
   },
+
+  // 重置表单数据
   resetFormData() {
     this.setData({
       originFiles: [],
@@ -49,21 +50,16 @@ Page({
       address: '',
       locationName: '',
       hasVideo: false,
-      tempVideoUrl: ''
+      tempVideoUrl: '',
+      videoIndex: -1,
+      draftSaved: false,
     });
   },
+
+  // 初始化
   onLoad() {
-    // 初始化数据
-    this.setData({
-      originFiles: [],
-      title: '',
-      content: '',
-      location: null,
-      locationName: '',
-      address: '',
-      hasVideo: false,
-      tempVideoUrl: ''
-    });
+    this.resetFormData();
+    this.loadDraft(); // 加载草稿
   },
 
   // 监听标题输入
@@ -95,9 +91,9 @@ Page({
     });
 
     // 检查是否上传了图片或视频
-    if (!originFiles || originFiles.length === 0) {
+    if (originFiles.filter(f => f.type === 'image').length === 0) {
       wx.showToast({
-        title: '请上传图片或视频',
+        title: '请至少上传一张图片',
         icon: 'none',
         duration: 1500
       });
@@ -127,33 +123,6 @@ Page({
     // 所有检查都通过
     return true;
   },
-
-  // 选择视频文件
-  chooseVideo() {
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['video'],
-      sourceType: ['album', 'camera'],
-      maxDuration: 60,
-      camera: 'back',
-      success: (res) => {
-        const tempFiles = res.tempFiles;
-        if (tempFiles && tempFiles.length > 0) {
-          const videoFile = tempFiles[0];
-          this.processVideoFile(videoFile);
-        }
-      },
-      fail: (err) => {
-        console.error('选择视频失败：', err);
-        wx.showToast({
-          title: '选择视频失败',
-          icon: 'none',
-          duration: 2000
-        });
-      }
-    });
-  },
-
   // 生成视频缩略图
   async generateVideoThumbnail(file) {
     return new Promise((resolve, reject) => {
@@ -180,11 +149,11 @@ Page({
               });
             },
             fail: (err) => {
-              // 如果获取视频信息失败，使用默认缩略图
+              console.log("获取视频信息失败", err);
               resolve({
                 ...file,
-                thumb: '/assets/images/video-placeholder.png',
-                thumbUrl: '/assets/images/video-placeholder.png',
+                thumb: '',
+                thumbUrl: '',
                 duration: 0,
                 width: 0,
                 height: 0
@@ -224,16 +193,14 @@ Page({
         thumbUrl: processedFile.thumb
       };
 
-      // 更新文件列表
-      const {
-        originFiles
-      } = this.data;
-      const updatedFiles = [newFile, ...originFiles];
+      // 更新文件列表，确保视频文件始终作为第一个元素
+      const updatedFiles = [newFile, ...this.data.originFiles.filter(f => f.type !== 'video')];
 
       this.setData({
         originFiles: updatedFiles,
         hasVideo: true,
-        tempVideoUrl: '' // 清除临时视频URL
+        tempVideoUrl: '', // 清除临时视频URL
+        videoIndex: 0 // 视频始终在第一个位置
       });
 
       wx.showToast({
@@ -279,104 +246,118 @@ Page({
     const {
       files
     } = e.detail;
-    console.log('上传的文件：', files);
+    const {
+      originFiles,
+      hasVideo
+    } = this.data;
+    // console.log('上传的文件：', files);
 
-    // 处理文件
-    const processFiles = async () => {
-      const validFiles = [];
-      let hasNewVideo = false;
+    // 分离视频和图片文件
+    const videoFiles = files.filter(file => file.type === 'video');
+    const imageFiles = files.filter(file => file.type === 'image');
+    // 状态跟踪
+    let errorTips = [];
+    let successTips = [];
 
-      for (const file of files) {
-        if (file.type === 'video') {
-          // 检查是否已经有视频
-          if (this.data.hasVideo) {
-            wx.showToast({
-              title: '只能上传一个视频',
-              icon: 'none',
-              duration: 2000
-            });
-            continue;
-          }
-
-          const filePath = file.url || file.tempFilePath;
-          const isMov = filePath.toLowerCase().endsWith('.mov');
-          const isValid = filePath.toLowerCase().endsWith('.mp4') ||
-            filePath.toLowerCase().endsWith('.avi') ||
-            isMov;
-
-          if (!isValid) {
-            wx.showToast({
-              title: '仅支持mp4、avi和mov格式',
-              icon: 'none',
-              duration: 2000
-            });
-            continue;
-          }
-
-          let processedFile;
-          if (isMov) {
-            // 对于MOV格式，直接使用原文件，不进行压缩
-            processedFile = await this.generateVideoThumbnail(file);
-          } else {
-            // 对于其他格式，进行压缩
-            const compressedFile = await this.compressVideo(file);
-            processedFile = await this.generateVideoThumbnail(compressedFile);
-          }
-
-          validFiles.push({
-            ...processedFile,
-            type: 'video',
-            status: 'done',
-            name: file.name || '视频文件',
-            size: processedFile.size || 0,
-            url: processedFile.url || file.url,
-            thumb: processedFile.thumb,
-            thumbUrl: processedFile.thumb
-          });
-          hasNewVideo = true;
-        } else {
-          validFiles.push({
-            ...file,
-            type: 'image',
-            status: 'done',
-            name: file.name || '图片文件',
-            size: file.size || 0,
-            url: file.url,
-            thumbUrl: file.url
-          });
-        }
-      }
-
-      // 将视频文件放在最前面
-      const videoFiles = validFiles.filter(file => file.type === 'video');
-      const imageFiles = validFiles.filter(file => file.type === 'image');
-
-      // 更新视频状态
-      if (hasNewVideo) {
-        this.setData({
-          hasVideo: true
-        });
-      }
-
-      return [...videoFiles, ...imageFiles];
-    };
-
-    try {
-      const sortedFiles = await processFiles();
-      console.log('处理后的文件：', sortedFiles);
-
-      this.setData({
-        originFiles: sortedFiles,
-      });
-    } catch (error) {
-      console.error('文件处理失败：', error);
+    // 校验视频数量（最多1个）
+    if (videoFiles.length > 1) {
       wx.showToast({
-        title: '文件处理失败',
+        title: '只能上传一个视频',
         icon: 'none',
         duration: 2000
       });
+      return;
     }
+
+    // 处理视频文件（如果有）
+    let processedVideo = null;
+    if (videoFiles.length === 1) {
+      // 检查是否已有视频
+      if (this.data.hasVideo) {
+        processedVideo = null;
+      }
+
+      const videoFile = videoFiles[0];
+      const filePath = videoFile.url || videoFile.tempFilePath;
+      const isMov = filePath.toLowerCase().endsWith('.mov');
+      const isValid = filePath.toLowerCase().endsWith('.mp4') ||
+        filePath.toLowerCase().endsWith('.avi') ||
+        isMov;
+
+      if (!isValid) {
+        wx.showToast({
+          title: '仅支持mp4、avi和mov格式',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+
+      try {
+        let processedFile;
+        if (isMov) {
+          processedFile = await this.generateVideoThumbnail(videoFile);
+        } else {
+          const compressedFile = await this.compressVideo(videoFile);
+          processedFile = await this.generateVideoThumbnail(compressedFile);
+        }
+
+        processedVideo = {
+          ...processedFile,
+          type: 'video',
+          status: 'done',
+          name: videoFile.name || '视频文件',
+          size: processedFile.size || 0,
+          url: processedFile.url || videoFile.url,
+          thumb: processedFile.thumb,
+          thumbUrl: processedFile.thumb
+        };
+      } catch (error) {
+        console.error('处理视频失败：', error);
+        wx.showToast({
+          title: '处理视频失败',
+          icon: 'none'
+        });
+        return;
+      }
+    }
+
+    // 处理图片文件（直接添加）
+    const processedImages = imageFiles.map(file => ({
+      ...file,
+      type: 'image',
+      status: 'done',
+      name: file.name || '图片文件',
+      size: file.size || 0,
+      url: file.url,
+      thumbUrl: file.url
+    }));
+
+    // 合并文件列表（视频在前，图片在后）
+    const newFiles = [processedVideo].filter(Boolean).concat(processedImages);
+
+    // 更新数据
+    this.setData({
+      originFiles: newFiles,
+      hasVideo: !!processedVideo,
+      videoIndex: processedVideo ? 0 : -1 // 视频始终在第一个位置
+    });
+
+    // // 提示上传结果
+    // if (processedVideo) {
+    //   wx.showToast({
+    //     title: '视频上传成功',
+    //     icon: 'success'
+    //   });
+    // } else if (imageFiles.length > 0) {
+    //   wx.showToast({
+    //     title: '图片上传成功',
+    //     icon: 'success'
+    //   });
+    // }
   },
+
+  // 图片视频预览
   handlePreview(e) {
     const {
       index
@@ -399,27 +380,38 @@ Page({
       });
     }
   },
+
+  // 移除图片和视频
   handleRemove(e) {
     const {
       index
     } = e.detail;
     const {
-      originFiles
+      originFiles,
+      videoIndex
     } = this.data;
     const removedFile = originFiles[index];
 
     // 如果删除的是视频，更新视频状态
     if (removedFile.type === 'video') {
       this.setData({
-        hasVideo: false
+        hasVideo: false,
+        videoIndex: -1
+      });
+    } else if (index < videoIndex) {
+      // 如果删除的是视频前面的图片，更新视频索引
+      this.setData({
+        videoIndex: videoIndex - 1
       });
     }
 
     originFiles.splice(index, 1);
     this.setData({
-      originFiles,
+      originFiles
     });
   },
+
+  // 获取当前位置
   getCurrentLocation() {
     wx.showLoading({
       title: '获取位置中...',
@@ -458,6 +450,7 @@ Page({
       }
     });
   },
+
   getAddressFromLocation(latitude, longitude) {
     wx.request({
       url: 'https://apis.map.qq.com/ws/geocoder/v1/',
@@ -498,6 +491,8 @@ Page({
       }
     });
   },
+
+  // 选择位置
   chooseLocation() {
     wx.chooseLocation({
       success: (res) => {
@@ -531,6 +526,8 @@ Page({
       }
     });
   },
+
+  // 跳转到地图
   gotoMap() {
     wx.showActionSheet({
       itemList: ['获取当前位置', '在地图中选择'],
@@ -543,16 +540,8 @@ Page({
       }
     });
   },
-  saveDraft() {
-    if (!this.validateData()) {
-      return;
-    }
 
-    // 数据校验通过，继续保存草稿流程
-    wx.reLaunch({
-      url: `/pages/home/index?oper=save`,
-    });
-  },
+  // 发布
   async release() {
     // 校验数据
     if (!this.validateData()) {
@@ -674,10 +663,39 @@ Page({
       }
     }
   },
+
+  // 返回主页
   onBackToHome() {
-    wx.switchTab({
-      url: '/pages/home/index',
-    });
+    const hasUnpublishedData = this.data.title || this.data.content || (this.data.originFiles && this.data.originFiles.length > 0) && !this.data.draftSaved;;
+
+    if (hasUnpublishedData) {
+      wx.showModal({
+        title: '草稿提醒',
+        content: '您有未发布的内容，是否保存为草稿？',
+        confirmText: '保存草稿',
+        cancelText: '放弃草稿',
+        success: (res) => {
+          if (res.confirm) {
+            // 用户选择保存草稿
+            this.saveDraft();
+          } else {
+            // 用户选择放弃，清空草稿数据并回首页
+            const userId = wx.getStorageSync('userId') || 'defaultUser';
+            wx.removeStorageSync(`draft_${userId}`);
+            this.resetFormData();
+            wx.switchTab({
+              url: '/pages/home/index'
+            });
+          }
+        }
+      });
+    } else {
+      // 没有未发布内容，直接返回首页
+      this.resetFormData();
+      wx.switchTab({
+        url: '/pages/home/index'
+      });
+    }
   },
   onShow() {
     // 检查登录状态
@@ -716,5 +734,92 @@ Page({
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setTabBarValue('release');
     }
+  },
+  // 保存草稿
+  saveDraft() {
+
+    // 构造草稿数据（优化文件处理）
+    const draftData = {
+      title: this.data.title,
+      content: this.data.content,
+      location: this.data.location,
+      address: this.data.address,
+      locationName: this.data.locationName,
+      originFiles: this.data.originFiles.map(file => ({
+        type: file.type,
+        path: file.tempFilePath || file.url,
+        name: file.name,
+        size: file.size,
+        duration: file.duration || 0,
+        thumb: file.thumb
+      })),
+      saveTime: new Date().getTime()
+    };
+
+    // 保存到本地（使用用户ID区分）
+    const userId = wx.getStorageSync('userId') || 'defaultUser';
+    try {
+      wx.setStorageSync(`draft_${userId}`, draftData);
+
+      // 显示保存结果
+      this.setData({
+        draftSaved: true
+      });
+      wx.showToast({
+        title: '草稿保存成功',
+        icon: 'success',
+        duration: 1500
+      });
+      setTimeout(() => {
+        wx.switchTab({
+          url: '/pages/home/index'
+        });
+      }, 1500);
+
+    } catch (e) {
+      console.error('草稿保存失败:', e);
+      wx.showToast({
+        title: '草稿保存失败',
+        icon: 'none',
+        duration: 1500
+      });
+    }
+  },
+
+  // 加载草稿方法
+  loadDraft() {
+    const userId = wx.getStorageSync('userId') || 'defaultUser';
+    try {
+      const draft = wx.getStorageSync(`draft_${userId}`);
+      if (draft) {
+        // 转换文件数据
+        const files = draft.originFiles.map(file => ({
+          ...file,
+          status: 'done',
+          tempFilePath: file.path,
+          url: file.path,
+          thumbUrl: file.thumb
+        }));
+
+        this.setData({
+          title: draft.title,
+          content: draft.content,
+          originFiles: files,
+          location: draft.location,
+          address: draft.address,
+          locationName: draft.locationName,
+          hasVideo: files.some(f => f.type === 'video'),
+          videoIndex: files.findIndex(f => f.type === 'video')
+        });
+      }
+    } catch (e) {
+      console.error('草稿加载失败:', e);
+    }
+  },
+
+  // 时间格式化方法
+  formatTime(timestamp) {
+    const date = new Date(timestamp);
+    return `${date.getMonth()+1}月${date.getDate()}日 ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
   },
 });

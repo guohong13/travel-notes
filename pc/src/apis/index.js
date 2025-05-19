@@ -32,5 +32,5 @@ export const notesAPI = {
     request.put(`/notes/reject/${id}`, { rejectReason: reason }),
 
   // 删除游记
-  deleteNote: (id) => request.delete(`/notes/delete/${id}`),
+  deleteNote: (id) => request.delete(`/admin/notes/delete/${id}`),
 };

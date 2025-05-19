@@ -2,14 +2,13 @@ import axios from 'axios';
 
 // 创建 axios 实例
 const service = axios.create({
-    baseURL: 'https://your-api-url.com', // 替换为你的后端 API 基础地址
+    baseURL: 'http://localhost:3300/api',
     timeout: 5000 // 请求超时时间
 });
 
 // 请求拦截器
 service.interceptors.request.use(
     config => {
-        // 在发送请求之前做些什么，例如添加请求头
         config.headers['Content-Type'] = 'application/json';
         return config;
     },
@@ -23,7 +22,6 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
     response => {
-        // 对响应数据做点什么
         return response.data;
     },
     error => {

@@ -67,7 +67,6 @@
 │   └── adminRegister.html   # 管理员注册
 ├── mobile/                  # 移动端前端代码
 │   ├── api/                 # 前端接口请求封装
-│   ├── behaviors/           # 小程序行为封装
 │   ├── components/          # 封装的组件
 │   ├── pages/               # 页面代码
 │   ├── utils/               # 封装的工具
@@ -168,7 +167,7 @@
 - `GET /api/notes/admin/filter` 筛选游记列表
 - `PUT /api/notes/approve/:id` 审核通过
 - `PUT /api/notes/reject/:id` 审核拒绝
-- `DELETE /api/notes/delete/:id` 删除游记（逻辑删除）
+- `DELETE /api/admin/notes/delete/:id` 删除游记（逻辑删除）
 
 ### 数据统计相关
 
@@ -191,4 +190,4 @@
 
 ## 鸣谢
 
-@xiamian225
+[@xiamian225](https://github.com/xiamian225)

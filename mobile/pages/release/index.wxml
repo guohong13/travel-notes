@@ -1,11 +1,9 @@
 <t-navbar title="发布游记" left-arrow bind:go-back="onBackToHome"></t-navbar>
-<view class="page" style="width: 772rpx; display: block; box-sizing: border-box; height: 1591rpx">
+<view class="page">
   <view class="release-container">
-    <scroll-view scroll-x="true" class="upload-scroll-view" enhanced="true" show-scrollbar="false">
-      <view class="upload box" style="height: 206rpx; display: block; box-sizing: border-box; left: 0rpx; top: 0rpx">
-        <t-upload t-class="upload-class" media-type="{{['image', 'video']}}" files="{{originFiles}}" gridConfig="{{gridConfig}}" bind:success="handleSuccess" bind:remove="handleRemove" bind:preview="handlePreview" max="11" config="{{config}}" theme="gridConfig" imageMode="aspectFill" showUploadProgress="{{true}}" />
-      </view>
-    </scroll-view>
+    <view class="upload-container box">
+      <t-upload t-class="upload-class" media-type="{{['image','video']}}" files="{{originFiles}}" gridConfig="{{gridConfig}}" theme="grid" max="9" config="{{config}}" bind:success="handleSuccess" bind:remove="handleRemove" imageMode="aspectFill" />
+    </view>
     <view class="desc box" style="height: 108rpx; display: flex; box-sizing: border-box">
       <view class="desc-label">游记标题</view>
       <t-textarea t-class="desc-class" t-class-textarea="placeholder-class" placeholder="分享你的旅行新鲜事" maxlength="12" disableDefaultPadding="{{true}}" indicator value="{{title}}" bind:change="onTitleInput" />

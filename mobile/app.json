@@ -1,7 +1,6 @@
 {
   "pages": [
     "pages/home/index",
-    "pages/my/index",
     "pages/release/index",
     "pages/mynotes/index",
     "pages/video-player/index",
@@ -11,6 +10,7 @@
   "usingComponents": {
     "t-toast": "tdesign-miniprogram/toast/toast"
   },
+  "lazyCodeLoading": "requiredComponents",
   "requiredPrivateInfos": ["getLocation", "chooseLocation"],
   "subpackages": [
     {
@@ -22,29 +22,8 @@
       ]
     },
     {
-      "root": "pages/my/info-edit",
-      "name": "edit",
-      "pages": [
-        "index"
-      ]
-    },
-    {
       "root": "pages/login/register",
       "name": "register",
-      "pages": [
-        "index"
-      ]
-    },
-    {
-      "root": "pages/dataCenter",
-      "name": "dataCenter",
-      "pages": [
-        "index"
-      ]
-    },
-    {
-      "root": "pages/setting",
-      "name": "setting",
       "pages": [
         "index"
       ]

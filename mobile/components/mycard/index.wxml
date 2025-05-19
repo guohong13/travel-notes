@@ -16,7 +16,7 @@
     <!-- 底部信息和按钮 -->
     <view class="card-bottom">
       <!-- 审核状态 -->
-      <view class="card-status" style="background-color: {{travelNote.statusStyle.bg}}; color: {{travelNote.statusStyle.text}};">
+      <view class="card-status" style="background-color: {{travelNote.statusStyle.bg}}; color: {{travelNote.statusStyle.text}};" bindtap="onStatusTap">
         <text>{{travelNote.statusText}}</text>
       </view>
       <!-- 操作按钮 -->

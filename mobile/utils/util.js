@@ -14,7 +14,6 @@ const formatTime = (date) => {
   return `${[year, month, day].map(formatNumber).join('/')} ${[hour, minute, second].map(formatNumber).join(':')}`;
 };
 
-// 复制到本地临时路径，方便预览
 const getLocalUrl = (path, name) => {
   const fs = wx.getFileSystemManager();
   const tempFileName = `${wx.env.USER_DATA_PATH}/${name}`;

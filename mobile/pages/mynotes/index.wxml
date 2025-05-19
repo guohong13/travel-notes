@@ -2,7 +2,7 @@
 <view class="my-page">
   <view class="travel-note-list">
     <block wx:if="{{notesList.length > 0}}">
-      <mycard wx:for="{{notesList}}" wx:key="id" travelNote="{{item}}" bind:delete="onDeleteTravelNote" bind:edit="onEditTravelNote" />
+      <mycard wx:for="{{notesList}}" wx:key="id" travelNote="{{item}}" bind:delete="onDeleteTravelNote" bind:edit="onEditTravelNote" bind:showreject="onShowRejectReason"/>
     </block>
     <block wx:else>
       <view class="empty-tip">
