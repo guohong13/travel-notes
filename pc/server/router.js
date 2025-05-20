@@ -1,15 +1,30 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const { db, jwtSecret, public_key, private_key } = require("./config");
+const { db, jwtSecret, publicKey, privateKey } = require("./config");
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
-const NodeRSA = require("node-rsa");
 const crypto = require("crypto");
 const verifyUserToken = require("./middleware/userAuth");
 const verifyAdminToken = require("./middleware/adminAuth");
-// const decryptPassword = require("./middleware/decrypt");
 const upload = require("./middleware/multerConfig");
+
+const rsaDecrypt = (encryptedBase64) => {
+  try {
+    const decrypted = crypto.privateDecrypt(
+      {
+        key: privateKey,
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+        oaepHash: "sha256",
+      },
+      Buffer.from(encryptedBase64, "base64")
+    );
+    return decrypted.toString("utf8");
+  } catch (error) {
+    console.error("解密错误:", error);
+    return null;
+  }
+};
 
 // 登录频率限制
 const loginLimiter = rateLimit({
@@ -638,7 +653,14 @@ router.get("/notes/search", async (req, res) => {
  */
 router.post("/admin/register", (req, res) => {
   const { username, password, role } = req.body;
-
+  const decryptPassword = rsaDecrypt(password);
+  if (!decryptPassword) {
+    return res.status(400).json({
+      code: 0,
+      message: "密码解密失败",
+      data: null,
+    });
+  }
   // 检查用户名是否已存在
   const checkSql = "SELECT * FROM admins WHERE username =?";
   db.query(checkSql, [username], (checkErr, checkResults) => {
@@ -659,7 +681,7 @@ router.post("/admin/register", (req, res) => {
     }
 
     // 对密码进行哈希处理
-    bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
+    bcrypt.hash(decryptPassword, 10, (hashErr, hashedPassword) => {
       if (hashErr) {
         return res.status(500).json({
           code: 0,
@@ -704,6 +726,14 @@ router.post("/admin/register", (req, res) => {
  */
 router.post("/admin/login", (req, res) => {
   const { username, password } = req.body;
+  const decryptPassword = rsaDecrypt(password);
+  if (!decryptPassword) {
+    return res.status(400).json({
+      code: 0,
+      message: "密码解密失败",
+      data: null,
+    });
+  }
 
   // 先查询数据库中是否已经存在该管理员用户名
   const checkSql = "SELECT * FROM admins WHERE username = ?";
@@ -727,32 +757,36 @@ router.post("/admin/login", (req, res) => {
 
     // 对用户名进行密码校验
     const admin = results[0];
-    bcrypt.compare(password, admin.password_hash, (compareErr, isMatch) => {
-      if (compareErr) {
-        return res.status(500).json({
-          code: 0,
-          message: "密码验证出错，登录失败",
-          data: null,
-        });
-      }
+    bcrypt.compare(
+      decryptPassword,
+      admin.password_hash,
+      (compareErr, isMatch) => {
+        if (compareErr) {
+          return res.status(500).json({
+            code: 0,
+            message: "密码验证出错，登录失败",
+            data: null,
+          });
+        }
 
-      if (!isMatch) {
-        return res.status(400).json({
-          code: 0,
-          message: "用户名或密码错误",
-          data: null,
+        if (!isMatch) {
+          return res.status(400).json({
+            code: 0,
+            message: "用户名或密码错误",
+            data: null,
+          });
+        }
+        // 生成包含用户id和role的token
+        const token = jwt.sign({ id: admin.id, role: admin.role }, jwtSecret, {
+          expiresIn: "7d",
+        });
+        res.status(201).json({
+          code: 1,
+          message: "登录成功",
+          data: { token },
         });
       }
-      // 生成包含用户id和role的token
-      const token = jwt.sign({ id: admin.id, role: admin.role }, jwtSecret, {
-        expiresIn: "7d",
-      });
-      res.status(201).json({
-        code: 1,
-        message: "登录成功",
-        data: { token },
-      });
-    });
+    );
   });
 });
 

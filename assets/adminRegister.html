@@ -1,58 +1,113 @@
 <!DOCTYPE html>
 <html lang="zh">
-<head>
-  <meta charset="UTF-8">
-  <title>管理员注册</title>
-</head>
-<body>
-  <h2>管理员注册</h2>
-  <form id="registerForm">
-    <label for="username">用户名:</label><br>
-    <input type="text" id="username" name="username" required><br><br>
+  <head>
+    <meta charset="UTF-8" />
+    <title>管理员注册</title>
+  </head>
+  <body>
+    <h2>管理员注册</h2>
+    <form id="registerForm">
+      <label for="username">用户名:</label><br />
+      <input type="text" id="username" name="username" required /><br /><br />
 
-    <label for="password">密码:</label><br>
-    <input type="password" id="password" name="password" required><br><br>
+      <label for="password">密码:</label><br />
+      <input
+        type="password"
+        id="password"
+        name="password"
+        required
+      /><br /><br />
 
-    <label for="role">角色:</label><br>
-    <select id="role" name="role" required>
-      <option value="admin">admin</option>
-      <option value="reviewer">reviewer</option>
-    </select><br><br>
+      <label for="role">角色:</label><br />
+      <select id="role" name="role" required>
+        <option value="admin">admin</option>
+        <option value="reviewer">reviewer</option></select
+      ><br /><br />
 
-    <button type="submit">注册</button>
-  </form>
+      <button type="submit">注册</button>
+    </form>
 
-  <p id="message"></p>
+    <p id="message"></p>
 
-  <script>
-    document.getElementById("registerForm").addEventListener("submit", async function (event) {
-      event.preventDefault();
+    <script>
+      const publicKey = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqq4+WEtTtQegtA1CeiVw
+hXOVzzYa7NdY+hL7gJaGwUTyXG+dekH9kxhY4FBuBVRkSfSMQjpjnzi21BKjtnie
+6J7cAWMC+KJPZpkuL6MZVlzhLw6iHvfF2l267lKt4K5ic4y7RIkLfE4rEIys6A6w
+Q01X000NyFGhWNgLSmE3FRgUHLoedU5XQMTnTit1EKz+98Qeb2rxvlW7FpkQuYDe
+WfKFQ3JSQH2O1oRkas0iCQfRewe0+ugetTRzQY4UW7yF4BwwfDXVkymj1fUNjNmj
+NhOCU5CKfmlk+CZT5Nj1e3pveZjpuTqGWSDJ3HjI7FVt2Kzv7mBzZidDlVNLBa6B
+jQIDAQAB
+-----END PUBLIC KEY-----`;
 
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-      const role = document.getElementById("role").value;
+      async function encryptPassword(password) {
+        const pem = publicKey
+          .replace(/-----BEGIN PUBLIC KEY-----/, "")
+          .replace(/-----END PUBLIC KEY-----/, "")
+          .replace(/\s+/g, "");
+        const binaryDer = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
 
-      try {
-        const response = await fetch("http://localhost:3300/api/admin/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
+        const key = await window.crypto.subtle.importKey(
+          "spki",
+          binaryDer.buffer,
+          {
+            name: "RSA-OAEP",
+            hash: "SHA-256",
           },
-          body: JSON.stringify({ username, password, role })
-        });
+          false,
+          ["encrypt"]
+        );
 
-        const result = await response.json();
-        const messageEl = document.getElementById("message");
+        const encoded = new TextEncoder().encode(password);
+        const encrypted = await window.crypto.subtle.encrypt(
+          { name: "RSA-OAEP" },
+          key,
+          encoded
+        );
 
-        if (result.code === 1) {
-          messageEl.textContent = "注册成功，Token: " + result.data.token;
-        } else {
-          messageEl.textContent = "注册失败：" + result.message;
-        }
-      } catch (error) {
-        document.getElementById("message").textContent = "请求出错：" + error.message;
+        return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
       }
-    });
-  </script>
-</body>
+
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
+
+          const username = document.getElementById("username").value;
+          const password = document.getElementById("password").value;
+          const role = document.getElementById("role").value;
+
+          const encryptedPassword = await encryptPassword(password);
+
+          try {
+            const response = await fetch(
+              "http://localhost:3300/api/admin/register",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  username,
+                  password: encryptedPassword,
+                  role,
+                }),
+              }
+            );
+
+            const result = await response.json();
+            const messageEl = document.getElementById("message");
+
+            if (result.code === 1) {
+              messageEl.textContent = "注册成功，Token: " + result.data.token;
+            } else {
+              messageEl.textContent = "注册失败：" + result.message;
+            }
+          } catch (error) {
+            document.getElementById("message").textContent =
+              "请求出错：" + error.message;
+          }
+        });
+    </script>
+  </body>
 </html>

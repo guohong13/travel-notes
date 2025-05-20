@@ -6,16 +6,18 @@ import { Button, Form, Input, Card, message } from "antd";
 import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { authAPI } from "@/apis";
+import { encryptWithPublicKey } from "@/utils/crypto";
 
 const Login = () => {
   const [passwordVisible, setPasswordVisible] = React.useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const onFinish = async (values) => {
+    const encryptedPassword = await encryptWithPublicKey(values.password);
     try {
       const response = await authAPI.login({
         username: values.username,
-        password: values.password,
+        password: encryptedPassword,
       });
 
       localStorage.setItem("adminToken", response.data.token);
