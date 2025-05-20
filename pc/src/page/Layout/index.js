@@ -71,6 +71,7 @@ const NotesLayout = () => {
   };
   const onConfirm = () => {
     localStorage.removeItem("adminToken");
+    dispatch(clearUser());
     navigate("/login");
   };
   useEffect(() => {

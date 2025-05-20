@@ -1,6 +1,4 @@
 import axios from "axios";
-import { message } from "antd";
-import { clearUser } from "@/store/userSlice";
 
 // 创建axios实例
 const service = axios.create({

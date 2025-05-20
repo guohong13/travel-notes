@@ -1,12 +1,14 @@
 const express = require("express");
 const cors = require("cors");
-const router = require("./router");
+const compression = require("compression");
 
+const router = require("./router");
 const app = express();
 
 // 中间件配置
 app.use(cors()); // 允许跨域请求
 app.use(express.json());
+app.use(compression());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads")); // 静态资源路径
 app.use("/api", router);
