@@ -1,4 +1,3 @@
-// pages/mynotes/index.js
 import {
   notesApi
 } from '~/api/request';
@@ -66,11 +65,6 @@ Page({
         return;
       }
 
-      //   wx.showLoading({
-      //     title: '加载中...',
-      //     mask: true
-      //   });
-
       const userRes = await userApi.getProfile();
       if (userRes.code !== 1 || !userRes.data || !userRes.data.id) {
         throw new Error('获取用户信息失败');
@@ -89,13 +83,7 @@ Page({
           shortContent: note.content?.length > 50 ? note.content.slice(0, 50) + '...' : note.content || '',
           statusText: statusMap[note.status?.toLowerCase()] || '未知状态',
           statusStyle: statusStyleMap[note.status?.toLowerCase()] || statusStyleMap.default
-          // images: note.images
-          //   ? note.images.map(img => img.startsWith('http') ? img : BASE_URL + img)
-          //   : [],
-          //   avatar: note.avatar || '/assets/images/default-avatar.png',
-          //   nickname: note.nickname || '游客'
         }));
-        // console.log("noteslist:", notesList)
         this.setData({
           notesList,
           isEmpty: notesList.length === 0

@@ -70,9 +70,7 @@ Page({
           const processedVideo = processResourcePath(note.video_url);
 
           // 处理头像路径
-          const processedAvatar = note.avatar_url ?
-            processResourcePath(note.avatar_url) :
-            '/assets/images/default-avatar.png';
+          const processedAvatar = processResourcePath(note.avatar_url)
 
           return {
             id: note.id,
