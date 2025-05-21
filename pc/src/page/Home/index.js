@@ -1,4 +1,3 @@
-// page/Home/index.jsx
 import React, { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import { Card, Spin, Alert } from "antd";
