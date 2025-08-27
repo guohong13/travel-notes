@@ -1,21 +1,23 @@
-<t-navbar title="编辑游记" left-arrow />
-<view class="container">
-  <view class="content">
-    <view class="image-upload">
-      <t-upload mediaType="{{['image','video']}}" files="{{files}}" bind:success="onUploadSuccess" bind:remove="onUploadRemove" max="{{9}}" gridConfig="{{gridConfig}}" theme="grid" show-progress show-status />
+<t-navbar title="编辑游记" left-arrow bind:go-back="onBackToHome" />
+<view class="page">
+  <view class="release-container">
+    <view class="upload-container box">
+      <t-upload t-class="upload-class" media-type="{{['image','video']}}" files="{{files}}" gridConfig="{{gridConfig}}" theme="grid" max="9" bind:success="onUploadSuccess" bind:remove="onUploadRemove" imageMode="aspectFill" />
     </view>
-
-    <t-input value="{{title}}" placeholder="请输入标题" bind:change="onTitleInput" class="title-input" />
-
-    <t-textarea value="{{content}}" placeholder="请输入内容" bind:change="onContentInput" class="content-input" maxlength="2000" indicator />
-
-    <view class="location-input" bindtap="chooseLocation">
-      <t-input value="{{location}}" placeholder="请输入地点" readonly suffixIcon="location" />
+    <view class="desc box">
+      <view class="desc-label">游记标题</view>
+      <input class="desc-class" placeholder="分享你的旅行新鲜事" maxlength="12" value="{{title}}" bindinput="onTitleInput" />
     </view>
-  </view>
-
-  <view class="bottom-buttons" style="height: 189rpx; display: flex; box-sizing: border-box; left: 0rpx; top: 1445rpx">
-    <t-button theme="default" block class="cancel-btn" bind:tap="onCancel">取消</t-button>
-    <t-button theme="primary" block class="save-btn" bind:tap="onSave">提交</t-button>
+    <view class="content box">
+      <view class="content-label">游记内容</view>
+      <t-textarea t-class="content-class" t-class-textarea="placeholder-class" placeholder="分享你的旅行故事..." maxlength="2000" disableDefaultPadding="{{true}}" indicator model:value="{{content}}" bindinput="onContentInput" />
+    </view>
+    <view class="location box">
+      <t-cell title="所在位置" hover arrow leftIcon="location" bindtap="chooseLocation" note="{{location || '点击选择位置'}}" />
+    </view>
+    <view class="btngroup box">
+      <t-button t-class="btn-class" theme="light" icon="close-circle" content="取消" size="large" bindtap="onCancel"></t-button>
+      <t-button t-class="btn-class" theme="primary" icon="check-circle" content="提交" size="large" bindtap="onSave"></t-button>
+    </view>
   </view>
 </view>

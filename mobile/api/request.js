@@ -5,290 +5,204 @@ const {
 } = config;
 const delay = config.isMock ? 500 : 0;
 
-// 用户相关接口
-export const userApi = {
-  // 登录请求
-  login: (data) => {
-    return request('/api/users/login', 'POST', data);
-  },
-  // 注册请求
-  register: (data) => {
-    return request('/api/users/register', 'POST', data);
-  },
-  // 获取用户信息
-  getProfile: () => {
-    return request('/api/users/profile', 'GET');
+function parseUploadResponse(res) {
+  try {
+    const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+    return data.data || data;
+  } catch (_) {
+    return {};
   }
+}
+
+export const userApi = {
+  login: (data) => request('/api/users/login', 'POST', data),
+  register: (data) => request('/api/users/register', 'POST', data),
+  getProfile: () => request('/api/users/profile', 'GET'),
+  updateProfile: (data) => request('/api/users/profile', 'PUT', data),
+  changePassword: (data) => request('/api/users/password', 'PUT', data),
+  uploadAvatar: (filePath) => new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: baseUrl + '/api/upload/avatar',
+      filePath,
+      name: 'avatar',
+      header: {
+        'Authorization': `Bearer ${wx.getStorageSync('access_token')}`
+      },
+      success: (res) => {
+        try {
+          const data = JSON.parse(res.data);
+          if (data.code === 1) resolve(data);
+          else reject(new Error(data.message || '上传失败'));
+        } catch (_) {
+          reject(new Error('上传响应解析失败'));
+        }
+      },
+      fail: (err) => reject(new Error('上传失败: ' + err.errMsg))
+    });
+  }),
+  followUser: (targetUserId) => request('/api/users/follow', 'POST', {
+    targetUserId
+  }),
+  getFollowStatus: (targetUserId) => request(`/api/users/follow/status/${targetUserId}`, 'GET'),
+  getFollowingList: (page = 1, pageSize = 20) => request(`/api/users/following?page=${page}&pageSize=${pageSize}`, 'GET'),
+  getFollowersList: (page = 1, pageSize = 20) => request(`/api/users/followers?page=${page}&pageSize=${pageSize}`, 'GET'),
+  getCollectsList: (page = 1, pageSize = 20) => request(`/api/users/collects?page=${page}&pageSize=${pageSize}`, 'GET'),
+  getLikesList: (page = 1, pageSize = 20) => request(`/api/users/likes?page=${page}&pageSize=${pageSize}`, 'GET'),
+  getReceivedLikes: () => request('/api/users/received-likes', 'GET')
 };
 
-// 游记相关接口
 export const notesApi = {
-  // 获取首页游记列表
-  getHomeNotes: () => {
-    return request('/api/notes', 'GET');
-  },
-  // 获取游记详情
-  getNoteDetail: (id) => {
-    return request(`/api/notes/${id}`, 'GET');
-  },
-  // 获取用户游记列表
-  getUserNotes: (userId) => {
-    return request(`/api/notes/user/${userId}`, 'GET');
-  },
-  // 搜索游记
-  searchNotes: (params) => {
-    console.log('搜索参数:', params);
-    return request('/api/notes/search', 'GET', params);
-  },
-  // 发布游记
-  publishNote: (data) => {
-    return request('/api/notes', 'POST', data);
-  },
-  // 修改游记
-  updateNote: (id, data) => {
-    return request(`/api/notes/modify/${id}`, 'PUT', data);
-  },
-  // 删除游记
-  deleteNote: (id) => {
-    return request(`/api/notes/delete/${id}`, 'DELETE');
-  },
-  // 上传文件并发布游记
+  getHomeNotes: (page = 1, pageSize = 10) => request(`/api/notes?page=${page}&pageSize=${pageSize}`, 'GET'),
+  getFollowingNotes: (page = 1, pageSize = 10) => request(`/api/notes/following?page=${page}&pageSize=${pageSize}`, 'GET'),
+  getNoteDetail: (id) => request(`/api/notes/detail/${id}`, 'GET'),
+  getUserNotes: (userId) => request(`/api/notes/user/${userId}`, 'GET'),
+  searchNotes: (params) => request('/api/notes/search', 'GET', params),
+  publishNote: (data) => request('/api/notes', 'POST', data),
+  updateNote: (id, data) => request(`/api/notes/modify/${id}`, 'PUT', data),
+  deleteNote: (id) => request(`/api/notes/delete/${id}`, 'DELETE'),
+  toggleLike: (id) => request(`/api/notes/${id}/like`, 'POST'),
+  getLikeStatus: (id) => request(`/api/notes/${id}/like`, 'GET'),
+  toggleCollect: (id) => request(`/api/notes/${id}/collect`, 'POST'),
+  getCollectStatus: (id) => request(`/api/notes/${id}/collect`, 'GET'),
+  getCommentList: (noteId, page = 1, pageSize = 20) => request(`/api/notes/${noteId}/comments?page=${page}&pageSize=${pageSize}`, 'GET'),
+  addComment: (noteId, content) => request(`/api/notes/${noteId}/comments`, 'POST', {
+    content
+  }),
+  toggleCommentLike: (commentId) => request(`/api/comments/${commentId}/like`, 'POST'),
+
   uploadFilesAndPublish: async ({
     files,
     title,
-    content
+    content,
+    location,
+    locationName,
+    address
   }) => {
     try {
       wx.showLoading({
         title: '正在发布...',
         mask: true
       });
-
-      // 找出视频和图片文件
       const videoFile = files.find(f => f.type === 'video');
       const imageFiles = files.filter(f => f.type === 'image');
-      console.log('文件信息：', {
-        totalFiles: files.length,
-        imageFiles: imageFiles.length,
-        hasVideo: !!videoFile,
-        files: files.map(f => ({
-          type: f.type,
-          tempFilePath: f.tempFilePath,
-          url: f.url
-        }))
-      });
 
-      // 第一步：上传文件
       const uploadTasks = [];
-
-      function parseResponse(res) {
-        try {
-          // 处理后端返回格式: { code, message, data }
-          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-          return data.data || data; // 直接返回data字段
-        } catch (error) {
-          console.error('解析响应失败:', error);
-          return {};
-        }
-      }
-
-      function createUploadTask(filePath, name, type) {
-        return new Promise((resolve, reject) => {
-          wx.uploadFile({
-            url: baseUrl + '/api/upload',
-            filePath,
-            name,
-            header: {
-              'Authorization': `Bearer ${wx.getStorageSync('access_token')}`
-            },
-            success: (res) => {
-              try {
-                const data = parseResponse(res);
-                resolve({
-                  type,
-                  data
-                });
-              } catch (e) {
-                reject(new Error('解析响应失败'));
-              }
-            },
-            fail: reject
-          });
-          // 监听上传进度
-          // uploadTask.onProgressUpdate((res) => {
-          //     console.log(`${type}上传进度: ${res.progress}%`);
-          //   });
+      const createUploadTask = (filePath, name, type) => new Promise((resolve, reject) => {
+        wx.uploadFile({
+          url: baseUrl + '/api/upload',
+          filePath,
+          name,
+          header: {
+            'Authorization': `Bearer ${wx.getStorageSync('access_token')}`
+          },
+          success: (res) => resolve({
+            type,
+            data: parseUploadResponse(res)
+          }),
+          fail: reject
         });
-      }
-
-      // 使用函数创建上传任务
-      imageFiles.forEach((file, index) => {
-        uploadTasks.push(createUploadTask(file.tempFilePath, 'images', 'image'));
-        // console.log(file.tempFilePath);
       });
 
-      if (videoFile) {
-        uploadTasks.push(createUploadTask(videoFile.tempFilePath, 'video', 'video'));
-      }
+      imageFiles.forEach((file) => uploadTasks.push(createUploadTask(file.tempFilePath, 'images', 'image')));
+      if (videoFile) uploadTasks.push(createUploadTask(videoFile.tempFilePath, 'video', 'video'));
 
-      // 等待所有文件上传完成
       const uploadResults = await Promise.all(uploadTasks);
-      // console.log("uploadResults:", uploadResults);
-
-      // 收集所有上传的文件路径
       const uploadedFiles = uploadResults.reduce((acc, result) => {
-        if (result.type === 'image') {
-          // 处理图片上传结果
-          if (result.data.images && result.data.images.length > 0) {
-            acc.images = [...(acc.images || []), ...result.data.images];
-          }
-        } else if (result.type === 'video') {
-          // 处理视频上传结果
-          if (result.data.video) {
-            acc.video = result.data.video;
-          }
-        }
+        if (result.type === 'image' && result.data.images?.length) acc.images = [...(acc.images || []), ...result.data.images];
+        if (result.type === 'video' && result.data.video) acc.video = result.data.video;
         return acc;
       }, {
         images: [],
         video: null
       });
 
-      // console.log("图片路径：", uploadedFiles.images)
-      // console.log("视频路径：", uploadedFiles.video)
-
-      // 第二步：发布游记
       const publishResult = await request('/api/notes', 'POST', {
         title,
         content,
         images: uploadedFiles.images,
-        video_url: uploadedFiles.video
+        video_url: uploadedFiles.video,
+        location,
+        locationName,
+        address
       });
 
       wx.hideLoading();
       return publishResult;
-
     } catch (error) {
       wx.hideLoading();
-      console.error('发布失败：', error);
       throw error;
     }
   },
 
-  // 上传文件并更新游记
-  uploadFilesAndUpdate: async ({ id, files, title, content }) => {
+  uploadFilesAndUpdate: async ({
+    id,
+    files,
+    title,
+    content,
+    location,
+    locationName,
+    address
+  }) => {
     try {
-      wx.showLoading({ title: '正在更新...', mask: true });
-  
-      // 分离新旧文件
-      const newFiles = files.filter(f => !f.isRemote && f.tempFilePath); 
+      wx.showLoading({
+        title: '正在更新...',
+        mask: true
+      });
+      const newFiles = files.filter(f => !f.isRemote && f.tempFilePath);
       const existingFiles = {
         images: files.filter(f => f.isRemote && f.type === 'image').map(f => f.url),
         video: files.find(f => f.isRemote && f.type === 'video')?.url
       };
-  
       const videoFile = newFiles.find(f => f.type === 'video');
       const imageFiles = newFiles.filter(f => f.type === 'image');
-      console.log(imageFiles,videoFile)
+
       const uploadTasks = [];
-  
-      function parseResponse(res) {
-        try {
-          // 处理后端返回格式: { code, message, data }
-          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-          return data.data || data; // 直接返回data字段
-        } catch (error) {
-          console.error('解析响应失败:', error);
-          return {};
-        }
-      }
-
-      function createUploadTask(filePath, name, type) {
-        return new Promise((resolve, reject) => {
-          wx.uploadFile({
-            url: baseUrl + '/api/upload',
-            filePath,
-            name,
-            header: {
-              'Authorization': `Bearer ${wx.getStorageSync('access_token')}`
-            },
-            success: (res) => {
-              try {
-                const data = parseResponse(res);
-                resolve({
-                  type,
-                  data
-                });
-              } catch (e) {
-                reject(new Error('解析响应失败'));
-              }
-            },
-            fail: reject
-          });
-          // 监听上传进度
-          // uploadTask.onProgressUpdate((res) => {
-          //     console.log(`${type}上传进度: ${res.progress}%`);
-          //   });
+      const createUploadTask = (filePath, name, type) => new Promise((resolve, reject) => {
+        wx.uploadFile({
+          url: baseUrl + '/api/upload',
+          filePath,
+          name,
+          header: {
+            'Authorization': `Bearer ${wx.getStorageSync('access_token')}`
+          },
+          success: (res) => resolve({
+            type,
+            data: parseUploadResponse(res)
+          }),
+          fail: reject
         });
-      }
-
-      // 使用函数创建上传任务
-      imageFiles.forEach((file, index) => {
-        uploadTasks.push(createUploadTask(file.tempFilePath, 'images', 'image'));
-        // console.log(file.tempFilePath);
       });
 
-      if (videoFile) {
-        uploadTasks.push(createUploadTask(videoFile.tempFilePath, 'video', 'video'));
-      }
-  
-      // 等待所有文件上传完成
-      const uploadResults = await Promise.all(uploadTasks);
-      console.log("uploadResults:", uploadResults);
+      imageFiles.forEach((file) => uploadTasks.push(createUploadTask(file.tempFilePath, 'images', 'image')));
+      if (videoFile) uploadTasks.push(createUploadTask(videoFile.tempFilePath, 'video', 'video'));
 
-      // 收集所有上传的文件路径
+      const uploadResults = await Promise.all(uploadTasks);
       const uploadedFiles = uploadResults.reduce((acc, result) => {
-        if (result.type === 'image') {
-          // 处理图片上传结果
-          if (result.data.images && result.data.images.length > 0) {
-            acc.images = [...(acc.images || []), ...result.data.images];
-          }
-        } else if (result.type === 'video') {
-          // 处理视频上传结果
-          if (result.data.video) {
-            acc.video = result.data.video;
-          }
-        }
+        if (result.type === 'image' && result.data.images?.length) acc.images = [...(acc.images || []), ...result.data.images];
+        if (result.type === 'video' && result.data.video) acc.video = result.data.video;
         return acc;
       }, {
         images: [],
         video: null
       });
-  
-      // 构建更新数据（合并新旧文件路径）
+
       const finalData = {
         id,
         title,
         content,
-        images: [...existingFiles.images, ...uploadedFiles.images], // 合并新旧图片
-        video_url: uploadedFiles.video || existingFiles.video
+        images: [...existingFiles.images, ...uploadedFiles.images],
+        video_url: uploadedFiles.video || existingFiles.video,
+        location,
+        locationName,
+        address
       };
-      console.log(finalData.images,finalData.video_url);
-  
-      // 调用更新接口
+
       const updateResult = await request(`/api/notes/modify/${id}`, 'PUT', finalData);
-      
-      // 检查更新结果
-      if (updateResult.code !== 1) {
-        throw new Error(updateResult.message || '更新失败');
-      }
-  
+      if (updateResult.code !== 1) throw new Error(updateResult.message || '更新失败');
       wx.hideLoading();
       return updateResult;
-  
     } catch (error) {
       wx.hideLoading();
-      console.error('更新失败:', error);
       throw error;
     }
   }
@@ -299,11 +213,8 @@ function request(url, method = 'GET', data = {}, customHeader = {}) {
     'content-type': 'application/json',
     ...customHeader
   };
-  // 获取token，有就丢进请求头
   const tokenString = wx.getStorageSync('access_token');
-  if (tokenString) {
-    header.Authorization = `Bearer ${tokenString}`;
-  }
+  if (tokenString) header.Authorization = `Bearer ${tokenString}`;
   return new Promise((resolve, reject) => {
     wx.request({
       url: baseUrl + url,
@@ -313,20 +224,13 @@ function request(url, method = 'GET', data = {}, customHeader = {}) {
       header,
       success(res) {
         setTimeout(() => {
-          // HTTP状态码为200或201才视为成功
-          if (res.statusCode === 200 || res.statusCode === 201 || res.code === 1) {
-            resolve(res.data);
-          } else {
-            // wx.request的特性，只要有响应就会走success回调，所以在这里判断状态，非200/201的均视为请求失败
-            reject(res);
-          }
+          if (res.statusCode >= 200 && res.statusCode < 300) resolve(res.data);
+          else reject(res);
         }, delay);
       },
       fail(err) {
-        setTimeout(() => {
-          reject(err);
-        }, delay);
-      },
+        setTimeout(() => reject(err), delay);
+      }
     });
   });
 }

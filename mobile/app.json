@@ -2,7 +2,19 @@
   "pages": [
     "pages/home/index",
     "pages/release/index",
-    "pages/mynotes/index",
+    "pages/message/index",
+    "pages/my/index",
+    "pages/search/index",
+    "pages/search/results/index",
+    "pages/login/register/index",
+    "pages/details/index",
+    "pages/my/mynotes/index",
+    "pages/my/edit-profile/index",
+    "pages/my/likes/index",
+    "pages/my/collects/index",
+    "pages/my/follows/index",
+    "pages/my/followers/index",
+    "pages/my/mutuals/index",
     "pages/video-player/index",
     "pages/edit/index",
     "pages/login/index"
@@ -11,30 +23,9 @@
     "t-toast": "tdesign-miniprogram/toast/toast"
   },
   "lazyCodeLoading": "requiredComponents",
-  "requiredPrivateInfos": ["getLocation", "chooseLocation"],
-  "subpackages": [
-    {
-      "root": "pages/search",
-      "name": "search",
-      "pages": [
-        "index",
-        "results/index"
-      ]
-    },
-    {
-      "root": "pages/login/register",
-      "name": "register",
-      "pages": [
-        "index"
-      ]
-    },
-    {
-      "root": "pages/details",
-      "name": "details",
-      "pages": [
-        "details"
-      ]
-    }
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseLocation"
   ],
   "window": {
     "backgroundTextStyle": "light",
@@ -54,7 +45,11 @@
         "text": "发布"
       },
       {
-        "pagePath": "pages/mynotes/index",
+        "pagePath": "pages/message/index",
+        "text": "消息"
+      },
+      {
+        "pagePath": "pages/my/index",
         "text": "我的"
       }
     ]

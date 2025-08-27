@@ -14,7 +14,7 @@ export default function createBus() {
       }
     },
     emit(event, ...args) {
-      if (this.events[event]) this.events[event].forEach((callback) => callback(...args));
-    },
+      if (this.events[event]) this.events[event].forEach((cb) => cb(...args));
+    }
   };
 }

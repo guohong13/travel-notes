@@ -1,0 +1,65 @@
+.edit-profile-page {
+  min-height: 100vh;
+  background-color: #f7f8fa;
+}
+
+.edit-container {
+  padding: 32rpx;
+  padding-top: calc(32rpx + env(safe-area-inset-top) + 88rpx);
+
+  .avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 40rpx;
+
+    .avatar {
+      width: 160rpx;
+      height: 160rpx;
+      border-radius: 50%;
+      background-color: #fff;
+      border: 2rpx solid #e6e6e6;
+      box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+    }
+
+    .upload-btn {
+      margin-top: 20rpx;
+      color: #2a6ae9;
+      font-size: 28rpx;
+      cursor: pointer;
+    }
+  }
+
+  .input-section {
+    .input-item {
+      display: flex;
+      flex-direction: column;
+      gap: 20rpx;
+
+      .input-label {
+        font-size: 28rpx;
+        color: #333;
+        margin-bottom: 8rpx;
+      }
+
+      ::v-deep .t-input {
+        background-color: #fafafa;
+        border-radius: 12rpx;
+        padding: 0 16rpx;
+        border: 2rpx solid #f0f0f0;
+      }
+    }
+  }
+
+  .btn-section {
+    margin-top: 40rpx;
+
+    .save-btn {
+      width: 100%;
+      border-radius: 12rpx;
+      font-size: 32rpx;
+      padding: 20rpx 0;
+      box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+    }
+  }
+}

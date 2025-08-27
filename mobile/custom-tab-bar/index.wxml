@@ -1,6 +1,10 @@
 <t-tab-bar value="{{ value }}" theme="tag" split="{{ false }}" bind:change="switchTab">
-  <t-tab-bar-item wx:for="{{ list }}" wx:key="value"
-    icon="{{ item.icon }}"
-    value="{{ item.value }}"
-  >{{ item.text }}</t-tab-bar-item>
+  <t-tab-bar-item wx:for="{{ list }}" wx:key="value" icon="{{ item.icon }}" value="{{ item.value }}">
+    <view class="badge-wrap">
+      <text class="tab-text">{{ item.text }}</text>
+      <view class="badge-pos" wx:if="{{ item.value === 'message' && unreadCount > 0 }}">
+        <t-badge class="badge" count="{{ unreadCount }}" theme="danger" shape="round" size="small" max-count="99"></t-badge>
+      </view>
+    </view>
+  </t-tab-bar-item>
 </t-tab-bar>

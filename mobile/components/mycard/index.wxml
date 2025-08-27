@@ -1,4 +1,4 @@
-<view class="travel-note-card">
+<view class="travel-note-card" bindtap="onTapCard">
   <!-- 卡片左侧：游记首图封面 -->
   <view class="card-left">
     <image src="{{travelNote.images[0]}}" mode="aspectFill"></image>
@@ -13,14 +13,14 @@
     <view class="card-content">
       <text>{{travelNote.shortContent}}</text>
     </view>
-    <!-- 底部信息和按钮 -->
-    <view class="card-bottom">
+    <!-- 底部信息和按钮（仅在需要时显示） -->
+    <view wx:if="{{showStatus || showActions}}" class="card-bottom">
       <!-- 审核状态 -->
-      <view class="card-status" style="background-color: {{travelNote.statusStyle.bg}}; color: {{travelNote.statusStyle.text}};" bindtap="onStatusTap">
+      <view wx:if="{{showStatus}}" class="card-status" style="background-color: {{travelNote.statusStyle.bg}}; color: {{travelNote.statusStyle.text}};" bindtap="onStatusTap">
         <text>{{travelNote.statusText}}</text>
       </view>
       <!-- 操作按钮 -->
-      <view class="card-buttons">
+      <view wx:if="{{showActions}}" class="card-buttons">
         <t-button theme="default" size="small" bindtap="onDelete">删除</t-button>
         <t-button theme="primary" size="small" bindtap="onEdit">编辑</t-button>
       </view>

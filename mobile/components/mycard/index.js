@@ -3,6 +3,14 @@ Component({
     travelNote: {
       type: Object,
       value: {}
+    },
+    showStatus: {
+      type: Boolean,
+      value: true
+    },
+    showActions: {
+      type: Boolean,
+      value: true
     }
   },
 
@@ -14,7 +22,7 @@ Component({
         });
       }
     },
-    
+
     onDelete() {
       this.triggerEvent('delete', {
         travelNote: this.data.travelNote
@@ -22,7 +30,14 @@ Component({
     },
 
     onEdit() {
+      console.log(this.data.travelNote)
       this.triggerEvent('edit', {
+        travelNote: this.data.travelNote
+      });
+    },
+
+    onTapCard() {
+      this.triggerEvent('tapcard', {
         travelNote: this.data.travelNote
       });
     }

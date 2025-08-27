@@ -1,6 +1,5 @@
 .login {
   &__title {
-    color: rgba(0, 0, 0, 0.9);
     font-size: 56rpx;
     font-weight: 600;
     line-height: 72rpx;
@@ -15,35 +14,12 @@
     margin-bottom: 40rpx;
   }
 
-  &__tips {
-    color: rgba(0, 0, 0, 0.4);
-    font-size: 24rpx;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 40rpx;
-    margin: 24rpx 32rpx 32rpx;
-  }
-
   &__button {
     margin: 48rpx 0;
   }
 
   &__others {
-    margin: 64rpx 32rpx auto 32rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &-buttons {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      .button {
-        margin: 0 !important;
-        min-width: 200rpx;
-      }
-    }
+    display: none;
   }
 
   // 覆盖组件样式
@@ -51,10 +27,6 @@
     --td-radio-icon-size: 32rpx;
     --td-radio-label-line-height: 40rpx;
     align-items: center;
-  }
-
-  .radio-class-icon {
-    margin-top: 0 !important;
   }
 
   .radio-class-label {

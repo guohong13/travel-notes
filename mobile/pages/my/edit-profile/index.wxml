@@ -1,0 +1,31 @@
+<t-navbar left-arrow title="编辑资料" />
+<view class="edit-profile-page">
+  <view class="edit-container">
+    <view class="avatar-section">
+      <image class="avatar" src="{{userInfo.avatar}}" mode="aspectFill"></image>
+      <view class="upload-btn" bindtap="onChooseAvatar">更换头像</view>
+    </view>
+
+    <view class="input-section">
+      <view class="input-item">
+        <t-input placeholder="请输入用户昵称" value="{{userInfo.nickname}}" bindchange="onNicknameInput">
+          <view slot="label" class="input-label">用户昵称</view>
+        </t-input>
+
+        <t-input type="password" placeholder="请输入新密码" value="{{userInfo.newPassword}}" bindchange="onNewPasswordInput">
+          <view slot="label" class="input-label">新密码</view>
+        </t-input>
+
+        <t-input type="password" placeholder="请确认新密码" value="{{userInfo.confirmPassword}}" bindchange="onConfirmPasswordInput">
+          <view slot="label" class="input-label">确认密码</view>
+        </t-input>
+      </view>
+    </view>
+
+    <view class="btn-section">
+      <t-button class="save-btn" bindtap="onSave" theme="primary" size="large" :disabled="{{!hasChanges || loading}}">
+        {{loading ? '保存中...' : '保存'}}
+      </t-button>
+    </view>
+  </view>
+</view>

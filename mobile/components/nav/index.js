@@ -1,30 +1,32 @@
 Component({
   options: {
-    styleIsolation: 'shared',
+    styleIsolation: 'shared'
   },
   properties: {
     navType: {
       type: String,
-      value: 'title',
+      value: 'title'
     },
-    titleText: String,
+    titleText: String
   },
   data: {
-    statusHeight: 0,
+    statusHeight: 0
   },
   lifetimes: {
     ready() {
-      const statusHeight = wx.getWindowInfo().statusBarHeight;
+      const {
+        statusBarHeight
+      } = wx.getWindowInfo();
       this.setData({
-        statusHeight
+        statusHeight: statusBarHeight
       });
-    },
+    }
   },
   methods: {
     searchTurn() {
       wx.navigateTo({
-        url: `/pages/search/index`,
+        url: '/pages/search/index'
       });
-    },
-  },
+    }
+  }
 });

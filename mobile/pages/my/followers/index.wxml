@@ -1,0 +1,4 @@
+<t-navbar title="我的粉丝" left-arrow></t-navbar>
+<view class="followers-page">
+  <user-list context="followers" users="{{users}}" bind:tapuser="onTapUser" bind:action="onAction" />
+</view>

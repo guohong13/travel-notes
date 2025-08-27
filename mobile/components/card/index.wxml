@@ -1,10 +1,20 @@
-<view class="home-card" bind:tap="details">
+<view class="home-card">
   <t-image t-class="home-card__image" src="{{url}}" mode="aspectFill" />
   <view class="home-card__info">
     <text class="home-card__text">{{desc}}</text>
-    <view class="home-card__user-info">
-      <t-image t-class="home-card__avatar" src="{{avatar}}" mode="aspectFill" />
-      <text class="home-card__nickname">{{nickname}}</text>
+    <view class="home-card__meta">
+      <view class="home-card__user-info">
+        <t-image t-class="home-card__avatar" src="{{avatar}}" mode="aspectFill" />
+        <text class="home-card__nickname">{{nickname}}</text>
+      </view>
+      <view class="home-card__likes">
+        <t-icon name="heart" size="18" />
+        <text>{{likeCount}}</text>
+      </view>
+    </view>
+    <view wx:if="{{locationName}}" class="home-card__location">
+      <t-icon name="location" size="16" />
+      <text>{{locationName}}</text>
     </view>
   </view>
 </view>

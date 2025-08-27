@@ -1,0 +1,21 @@
+<view class="comment-item">
+  <!-- 头像区域 -->
+  <view class="avatar-section">
+    <image class="user-avatar" src="{{comment.avatar}}" mode="aspectFill"></image>
+  </view>
+
+  <!-- 内容区域 -->
+  <view class="content-section">
+    <text class="user-nickname">{{comment.nickname}}</text>
+    <view class="comment-content">
+      <text>{{comment.content}}</text>
+    </view>
+    <text class="comment-time">{{comment.formattedTime}}</text>
+  </view>
+
+  <!-- 点赞区域 -->
+  <view class="like-section" bind:tap="onLikeTap">
+    <t-icon name="{{comment.isLiked ? 'heart-filled' : 'heart'}}" size="40rpx" color="{{comment.isLiked ? '#ff4757' : '#999'}}" />
+    <text class="like-count {{comment.isLiked ? 'liked' : ''}}">{{comment.like_count || 0}}</text>
+  </view>
+</view>

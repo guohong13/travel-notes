@@ -1,0 +1,80 @@
+<t-navbar title="游记详情" left-arrow />
+<view class="detail-container">
+  <!-- 作者信息 -->
+  <view class="author-info">
+    <view class="author-left">
+      <image class="avatar" src="{{travelNote.avatar}}" mode="aspectFill"></image>
+      <text class="author-nickname">{{travelNote.nickname}}</text>
+    </view>
+    <view class="author-right">
+      <t-button class="follow-btn {{isFollowing ? 'following' : ''}}" size="small" theme="{{isFollowing ? 'light' : 'primary'}}" bind:tap="onFollowTap" disabled="{{isOwnNote}}">
+        {{isFollowing ? '已关注' : '关注'}}
+      </t-button>
+    </view>
+  </view>
+  <!-- 图片和视频区域 -->
+  <swiper class="media-swiper" indicator-dots="{{true}}" current="{{currentIndex}}" bindchange="onSwiperChange" display-multiple-items="1">
+    <block wx:for="{{travelNote.mediaList}}" wx:key="index">
+      <swiper-item>
+        <block wx:if="{{item.type === 'video'}}">
+          <video src="{{item.url}}" bindtap="onVideoTap" object-fit="cover" style="width: 100%; height: 100%" controls="{{false}}" show-center-play-btn="{{false}}"></video>
+        </block>
+        <block wx:else>
+          <image class="media-image" src="{{item.url}}" mode="aspectFill" bindtap="onImageTap"></image>
+        </block>
+      </swiper-item>
+    </block>
+  </swiper>
+  <!-- 游记标题 -->
+  <text class="title">{{travelNote.title}}</text>
+  <!-- 游记内容 -->
+  <view class="content">
+    <text>{{travelNote.content}}</text>
+  </view>
+  <!-- 位置（在内容下、发布时间上） -->
+  <view wx:if="{{travelNote.locationName}}" class="note-location">
+    <t-icon name="location" size="16" />
+    <text class="note-location-text">{{travelNote.locationName}}</text>
+  </view>
+  <!-- 发布/编辑时间 -->
+  <view class="note-time" wx:if="{{noteTimeText}}">
+    <text class="note-time-text">{{noteTimeText}}</text>
+  </view>
+  <!-- 评论列表 -->
+  <view class="comments-section">
+    <view class="comments-header">
+      <text class="comments-title">评论 ({{commentList.length}})</text>
+      <view class="comment-sort">
+        <text class="sort-item {{commentSort === 'time' ? 'active' : ''}}" data-sort="time" bind:tap="onChangeCommentSort">按时间</text>
+        <text class="divider">|</text>
+        <text class="sort-item {{commentSort === 'like' ? 'active' : ''}}" data-sort="like" bind:tap="onChangeCommentSort">按点赞</text>
+      </view>
+    </view>
+    <view class="comments-list" wx:if="{{commentList.length > 0}}">
+      <comment wx:for="{{commentList}}" wx:key="id" comment="{{item}}" bind:like="onCommentLike" />
+    </view>
+    <view class="no-comments" wx:else>
+      <text>暂无评论，快来发表第一条评论吧~</text>
+    </view>
+  </view>
+  <!-- 底部导航栏 -->
+  <view class="bottom-nav">
+    <t-button class="like-btn {{isLiked ? 'liked' : ''}}" theme="text" icon="{{isLiked ? 'heart-filled' : 'heart'}}" bind:tap="onLikeTap">
+      {{likeCount || "赞"}}
+    </t-button>
+    <t-button class="collect-btn {{isCollected ? 'collected' : ''}}" theme="text" icon="{{isCollected ? 'star-filled' : 'star'}}" bind:tap="onCollectTap">
+      {{collectCount || "收藏"}}
+    </t-button>
+    <t-button theme="text" icon="chat-bubble" bind:tap="onCommentTap">
+      {{commentList.length || "评论"}}
+    </t-button>
+  </view>
+  <!-- 评论输入框，默认隐藏 -->
+  <view class="comment-input" hidden="{{!isCommentInputShow}}">
+    <t-input placeholder="请输入评论内容" bindinput="onCommentInput" model:value="{{commentContent}}" maxlength="500" show-word-limit="{{true}}"></t-input>
+    <view class="comment-actions">
+      <t-button bind:tap="onSubmitComment" theme="primary">提交</t-button>
+      <t-button bind:tap="onCancelComment" theme="light">取消</t-button>
+    </view>
+  </view>
+</view>

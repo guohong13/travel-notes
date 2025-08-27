@@ -1,57 +1,49 @@
-import Message from 'tdesign-miniprogram/message/index';
 import {
   notesApi
 } from '~/api/request';
-
-// 路径处理函数
-const processResourcePath = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-
-  // 统一处理路径格式
-  return `http://localhost:3300/${
-    path.replace(/\\/g, '/')
-       .replace(/^\/+/, '')
-       .replace(/\/+/g, '/')
-  }`;
-};
+import {
+  processResourcePath
+} from '../../utils/path';
 
 Page({
   data: {
-    enable: false,
-    swiperList: [],
+    enable: false, // 下拉刷新触发标记
     cardInfo: [],
-    notesList: [],
+    likeList: [],
     loading: false,
-    currentNote: null,
-    motto: 'Hello World',
-    userInfo: {},
-    hasUserInfo: false,
-    canIUse: wx.canIUse('button.open-type.getUserInfo'),
-    canIUseGetUserProfile: false,
-    canIUseOpenData: wx.canIUse('open-data.type.userAvatarUrl') && wx.canIUse('open-data.type.userNickName'),
+    // 分页相关
+    page: 1,
+    pageSize: 6,
+    hasMore: true,
+    loadingMore: false,
+    followingHasMore: true,
+    activeTab: 'recommend'
   },
 
-  onLoad(option) {
-    if (wx.getUserProfile) {
-      this.setData({
-        canIUseGetUserProfile: true
-      });
-    }
+  onLoad() {
     this.loadNotesList();
-
-    if (option.oper) {
-      this.showOperMsg(option.oper === 'release' ? '发布成功' : '保存成功');
-    }
+    this.loadFollowist();
   },
 
   onShow() {
-    this.loadNotesList();
-    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setTabBarValue('home');
+    const tabBar = this.getTabBar && this.getTabBar();
+    if (tabBar && tabBar.setTabBarValue) {
+      tabBar.setTabBarValue('home');
+    }
+    // 返回首页时刷新关注流
+    if (this.data.activeTab === 'follow') {
+      this.loadFollowist();
     }
   },
 
+  // 触底事件 - 自动加载更多游记内容
+  onReachBottom() {
+    if (this.data.hasMore && !this.data.loadingMore) {
+      this.loadMoreData();
+    }
+  },
+
+  // 加载发现列表
   async loadNotesList() {
     if (this.data.loading && !this.data.enable) return;
 
@@ -60,20 +52,16 @@ Page({
     });
 
     try {
-      const res = await notesApi.getHomeNotes();
-      if (res.code === 1 && Array.isArray(res.data)) {
-        const formattedList = res.data.map(note => {
-          // 处理图片数组
+      const res = await notesApi.getHomeNotes(1, this.data.pageSize);
+      if (res.code === 1 && res.data && res.data.list) {
+        const formattedList = res.data.list.map(note => {
           const processedImages = (note.images || []).map(img => processResourcePath(img));
-
-          // 处理视频路径
           const processedVideo = processResourcePath(note.video_url);
-
-          // 处理头像路径
           const processedAvatar = processResourcePath(note.avatar_url)
 
           return {
             id: note.id,
+            user_id: note.user_id,
             desc: note.title,
             mediaList: this.createMediaList(processedImages, processedVideo),
             avatar: processedAvatar,
@@ -83,14 +71,22 @@ Page({
             content: note.content,
             images: processedImages,
             video_url: processedVideo,
-            created_at: note.created_at
+            created_at: note.created_at,
+            likeCount: note.like_count || 0,
+            collect_count: note.collect_count || 0,
+            // 位置字段映射
+            locationName: note.location_name || '',
+            address: note.location_address || '',
+            location: (typeof note.location_lat === 'number' && typeof note.location_lng === 'number')
+              ? { latitude: note.location_lat, longitude: note.location_lng }
+              : null,
           };
         });
 
         this.setData({
-          notesList: formattedList,
           cardInfo: formattedList,
-          focusCardInfo: formattedList.slice(0, 3)
+          page: 1,
+          hasMore: res.data.pagination.hasMore
         });
       }
     } catch (error) {
@@ -106,29 +102,193 @@ Page({
     }
   },
 
-  // 创建媒体列表（视频优先）
-  createMediaList(images, video) {
-    const mediaList = [];
-    if (video) {
-      mediaList.push({
-        url: video,
-        type: 'video'
+  // 加载关注列表
+  async loadFollowist() {
+    try {
+      // 未登录直接清空并返回
+      const token = wx.getStorageSync('access_token');
+      if (!token) {
+        this.setData({
+          likeList: [],
+          followingHasMore: false
+        });
+        return;
+      }
+      const res = await notesApi.getFollowingNotes(1, this.data.pageSize);
+      if (res.code === 1 && res.data && res.data.list) {
+        const formattedList = res.data.list.map(note => {
+          const processedImages = (note.images || []).map(img => processResourcePath(img));
+          const processedVideo = processResourcePath(note.video_url);
+          const processedAvatar = processResourcePath(note.avatar_url)
+
+          return {
+            id: note.id,
+            user_id: note.user_id,
+            desc: note.title,
+            mediaList: this.createMediaList(processedImages, processedVideo),
+            avatar: processedAvatar,
+            nickname: note.nickname || '游客',
+            coverImage: processedImages[0] || '',
+            title: note.title,
+            content: note.content,
+            images: processedImages,
+            video_url: processedVideo,
+            created_at: note.created_at,
+            likeCount: note.like_count || 0,
+            collect_count: note.collect_count || 0,
+            // 位置字段映射
+            locationName: note.location_name || '',
+            address: note.location_address || '',
+            location: (typeof note.location_lat === 'number' && typeof note.location_lng === 'number')
+              ? { latitude: note.location_lat, longitude: note.location_lng }
+              : null,
+          };
+        });
+
+        this.setData({
+          likeList: formattedList,
+          followingHasMore: res.data.pagination.hasMore
+        });
+      } else {
+        // 如果没有关注数据，显示提示
+        this.setData({
+          likeList: [],
+          followingHasMore: false
+        });
+      }
+    } catch (error) {
+      // 如果接口调用失败，显示空状态
+      this.setData({
+        likeList: [],
+        followingHasMore: false
       });
+      // 若是未授权，提示登录
+      if (error && (error.statusCode === 401 || error.statusCode === 403)) {
+        wx.showToast({
+          title: '请先登录以查看关注内容',
+          icon: 'none'
+        });
+      }
     }
-    if (images.length > 0) {
-      mediaList.push({
-        url: images[0],
-        type: 'image'
-      });
-    }
-    return mediaList;
   },
 
+  // 下拉刷新
   onRefresh() {
     this.setData({
-      enable: true
+      enable: true,
+      page: 1,
+      hasMore: true,
+      followingHasMore: true
     });
     this.loadNotesList();
+    this.loadFollowist();
+  },
+
+  onHomeTabChange(e) {
+    const {
+      value
+    } = e.detail || {};
+    if (!value) return;
+    this.setData({
+      activeTab: value
+    });
+    if (value === 'follow') {
+      // 每次切换到关注页签主动刷新
+      this.loadFollowist();
+    }
+  },
+
+  // 自动加载更多数据
+  async loadMoreData() {
+    if (!this.data.hasMore || this.data.loadingMore) return;
+
+    this.setData({
+      loadingMore: true
+    });
+
+    try {
+      const nextPage = this.data.page + 1;
+      const res = await notesApi.getHomeNotes(nextPage, this.data.pageSize);
+
+      if (res.code === 1 && res.data && res.data.list) {
+        const newData = res.data.list.map(note => {
+          const processedImages = (note.images || []).map(img => processResourcePath(img));
+          const processedVideo = processResourcePath(note.video_url);
+          const processedAvatar = processResourcePath(note.avatar_url)
+
+          return {
+            id: note.id,
+            user_id: note.user_id,
+            desc: note.title,
+            mediaList: this.createMediaList(processedImages, processedVideo),
+            avatar: processedAvatar,
+            nickname: note.nickname || '游客',
+            coverImage: processedImages[0] || '',
+            title: note.title,
+            content: note.content,
+            images: processedImages,
+            video_url: processedVideo,
+            created_at: note.created_at,
+            likeCount: note.like_count,
+            collect_count: note.collect_count,
+            // 位置字段映射
+            locationName: note.location_name || '',
+            address: note.location_address || '',
+            location: (typeof note.location_lat === 'number' && typeof note.location_lng === 'number')
+              ? { latitude: note.location_lat, longitude: note.location_lng }
+              : null,
+          };
+        });
+
+        this.setData({
+          cardInfo: [...this.data.cardInfo, ...newData],
+          page: nextPage,
+          hasMore: res.data.pagination.hasMore,
+          loadingMore: false
+        });
+
+        // 显示加载成功提示
+        if (res.data.pagination.hasMore) {
+          wx.showToast({
+            title: `已加载第${nextPage}页`,
+            icon: 'none',
+            duration: 1500
+          });
+        }
+      } else {
+        this.setData({
+          hasMore: false,
+          loadingMore: false
+        });
+      }
+    } catch (error) {
+      console.error('加载更多数据失败:', error);
+      this.setData({
+        loadingMore: false
+      });
+      wx.showToast({
+        title: '加载失败，请重试',
+        icon: 'none'
+      });
+    }
+  },
+
+  // 创建媒体列表（视频优先）
+  createMediaList(processedImages, processedVideo) {
+    const mediaList = [];
+    if (processedVideo) {
+      mediaList.push({
+        type: 'video',
+        url: processedVideo
+      });
+    }
+    if (processedImages && processedImages.length) {
+      processedImages.forEach(img => mediaList.push({
+        type: 'image',
+        url: img
+      }));
+    }
+    return mediaList;
   },
 
   onTapCard(e) {
@@ -142,48 +302,10 @@ Page({
     }
 
     wx.navigateTo({
-      url: `/pages/details/details?travelNote=${encodeURIComponent(
-        JSON.stringify({
-          ...travelNote,
-          mediaList: this.createFullMediaList(travelNote)
-        })
+      url: `/pages/details/index?travelNote=${encodeURIComponent(
+        JSON.stringify(travelNote)
       )}`
     });
   },
 
-  // 创建完整媒体列表（用于详情页）
-  createFullMediaList(travelNote) {
-    const mediaList = [];
-    if (travelNote.video_url) {
-      mediaList.push({
-        url: travelNote.video_url,
-        type: 'video'
-      });
-    }
-    return mediaList.concat(
-      (travelNote.images || []).map(url => ({
-        url,
-        type: 'image'
-      }))
-    );
-  },
-
-  showOperMsg(content) {
-    Message.success({
-      context: this,
-      offset: [120, 32],
-      duration: 4000,
-      content
-    });
-  },
-  goRelease() {
-    wx.navigateTo({
-      url: '/pages/release/index'
-    });
-  },
-  godetails() {
-    wx.navigateTo({
-      url: '/pages/details/details'
-    });
-  }
 });

@@ -1,0 +1,4 @@
+<t-navbar title="我的关注" left-arrow></t-navbar>
+<view class="follows-page">
+  <user-list context="follows" users="{{users}}" bind:tapuser="onTapUser" bind:action="onAction" />
+</view>

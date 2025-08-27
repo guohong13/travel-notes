@@ -1,0 +1,11 @@
+<t-navbar title="我的收藏" left-arrow></t-navbar>
+<view class="my-page">
+  <view class="travel-note-list">
+    <block wx:if="{{collects.length > 0}}">
+      <mycard wx:for="{{collects}}" wx:key="id" travelNote="{{item}}" show-status="{{false}}" show-actions="{{false}}" bind:tapcard="onTapCard" />
+    </block>
+    <block wx:else>
+      <view class="empty-tip">暂无收藏内容</view>
+    </block>
+  </view>
+</view>

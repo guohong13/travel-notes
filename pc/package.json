@@ -32,13 +32,16 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^6.30.0",
     "react-scripts": "^5.0.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "craco start",
     "build": "craco build",
     "test": "craco test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "swagger": "node ./swagger.gen.js"
   },
   "eslintConfig": {
     "extends": [
@@ -61,6 +64,7 @@
   "devDependencies": {
     "@craco/craco": "^7.1.0",
     "sass": "^1.87.0",
-    "sass-loader": "^16.0.5"
+    "sass-loader": "^16.0.5",
+    "swagger-autogen": "^2.23.7"
   }
 }

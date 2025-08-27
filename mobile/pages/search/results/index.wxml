@@ -1,26 +1,14 @@
+<t-navbar title="搜索结果" left-arrow bind:go-back="onBackToHome" />
 <view class="search-results">
   <view class="search-header">
     <view class="search-title">搜索结果：{{searchValue}}</view>
   </view>
-  
+
   <view class="home-content">
-    <t-pull-down-refresh
-      value="{{loading}}"
-      bind:refresh="onPullDownRefresh"
-      loadingTexts="{{['下拉刷新', '松手刷新', '正在刷新', '刷新完成']}}"
-    >
+    <t-pull-down-refresh value="{{loading}}" bind:refresh="onPullDownRefresh" loadingTexts="{{['下拉刷新', '松手刷新', '正在刷新', '刷新完成']}}">
       <view class="home-card-list" style="height: 1187rpx; display: flex; box-sizing: border-box; width: 750rpx">
         <block wx:if="{{results.length > 0}}">
-          <card
-            wx:for="{{results}}"
-            wx:key="id"
-            desc="{{item.desc}}"
-            url="{{item.mediaList[0].url}}"
-            avatar="{{item.avatar}}"
-            nickname="{{item.nickname}}"
-            bind:tap="goToDetail"
-            data-item="{{item}}"
-          />
+          <card wx:for="{{results}}" wx:key="id" desc="{{item.desc}}" url="{{item.mediaList[0].url}}" avatar="{{item.avatar}}" nickname="{{item.nickname}}" likeCount="{{item.likeCount}}" bind:tap="goToDetail" data-item="{{item}}" />
         </block>
         <view wx:else class="empty-tip">
           <text>暂无相关游记</text>
@@ -35,4 +23,4 @@
   <view class="no-more" wx:if="{{!hasMore && results.length > 0}}">
     <text>没有更多了</text>
   </view>
-</view> 
+</view>

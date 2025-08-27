@@ -1,10 +1,11 @@
 import {
   userApi
 } from '~/api/request';
+import config from '../../../config';
 
 Page({
   data: {
-    avatarUrl: 'http://localhost:3300/uploads/user.jpg', // 默认头像
+    avatarUrl: `${config.baseUrl}/uploads/user.jpg`, // 默认头像
     username: '',
     nickname: '',
     password: '',
@@ -21,14 +22,12 @@ Page({
       });
 
       this.setData({
-        avatarUrl: res.tempFilePaths[0] // 只存储本地临时路径
+        avatarUrl: res.tempFilePaths[0] // 本地临时路径
       });
-    } catch (error) {
-      console.error('选择头像失败：', error);
-    }
+    } catch (_) {}
   },
 
-  // 注册处理（修改后）
+  // 注册处理
   async handleRegister() {
     const {
       username,
@@ -41,8 +40,8 @@ Page({
     if (!this.validateForm(username, nickname, password, confirmPassword)) return;
 
     try {
-      // 根据是否选择头像采用不同上传方式
-      const isDefaultAvatar = avatarUrl.includes('localhost:3300');
+      const BASE = config.baseUrl;
+      const isDefaultAvatar = avatarUrl.startsWith(`${BASE}/uploads/user.jpg`);
 
       if (isDefaultAvatar) {
         await this.registerWithoutAvatar(username, nickname, password);
@@ -58,7 +57,6 @@ Page({
         }
       });
     } catch (error) {
-      console.error('注册失败:', error);
       wx.showToast({
         title: error.message || '注册失败',
         icon: 'none'
@@ -66,7 +64,7 @@ Page({
     }
   },
 
-  // 表单验证方法
+  // 表单验证
   validateForm(username, nickname, password, confirmPassword) {
     if (!username || !nickname || !password || !confirmPassword) {
       wx.showToast({
@@ -95,11 +93,11 @@ Page({
     return true;
   },
 
-  // 带头像的注册
+  // 带头像注册
   registerWithAvatar(username, nickname, password, avatarPath) {
     return new Promise((resolve, reject) => {
       wx.uploadFile({
-        url: 'http://localhost:3300/api/users/register',
+        url: `${config.baseUrl}/api/users/register`,
         filePath: avatarPath,
         name: 'avatar',
         formData: {
@@ -116,7 +114,7 @@ Page({
     });
   },
 
-  // 无头像的注册
+  // 无头像注册
   async registerWithoutAvatar(username, nickname, password) {
     const res = await userApi.register({
       username,

@@ -1,0 +1,34 @@
+<view class="user-list">
+  <block wx:if="{{users && users.length}}">
+    <block wx:for="{{users}}" wx:key="id">
+      <view class="user-item" data-id="{{item.id}}" bindtap="onTapUser">
+        <image class="avatar" src="{{item.avatar}}" mode="aspectFill" />
+        <view class="info">
+          <view class="nickname">{{item.nickname}}</view>
+          <view class="desc" wx:if="{{item.desc}}">{{item.desc}}</view>
+        </view>
+        <view class="extra">
+          <block wx:if="{{context === 'follows'}}">
+            <t-button wx:if="{{item.isFollowing && item.isFollower}}" size="small" theme="default" catchtap="onAction" data-id="{{item.id}}">互相关注</t-button>
+            <t-button wx:elif="{{item.isFollowing && !item.isFollower}}" size="small" theme="default" catchtap="onAction" data-id="{{item.id}}">已关注</t-button>
+            <t-button wx:else size="small" theme="primary" catchtap="onAction" data-id="{{item.id}}">关注</t-button>
+          </block>
+          <block wx:elif="{{context === 'followers'}}">
+            <t-button wx:if="{{item.isFollowing && item.isFollower}}" size="small" theme="default" catchtap="onAction" data-id="{{item.id}}">互相关注</t-button>
+            <t-button wx:else size="small" theme="primary" catchtap="onAction" data-id="{{item.id}}">回关</t-button>
+          </block>
+          <block wx:elif="{{context === 'mutuals'}}">
+            <t-button size="small" theme="default" catchtap="onAction" data-id="{{item.id}}">互相关注</t-button>
+          </block>
+          <block wx:else>
+            <t-button wx:if="{{item.isFollowing && item.isFollower}}" size="small" theme="default" catchtap="onAction" data-id="{{item.id}}">已关注</t-button>
+            <t-button wx:elif="{{!item.isFollowing && item.isFollower}}" size="small" theme="primary" catchtap="onAction" data-id="{{item.id}}">回关</t-button>
+            <t-button wx:elif="{{item.isFollowing && !item.isFollower}}" size="small" theme="default" catchtap="onAction" data-id="{{item.id}}">取消关注</t-button>
+            <t-button wx:else size="small" theme="primary" catchtap="onAction" data-id="{{item.id}}">关注</t-button>
+          </block>
+        </view>
+      </view>
+    </block>
+  </block>
+  <view class="empty" wx:else>暂无数据</view>
+</view>

@@ -1,33 +1,32 @@
-import { userApi } from '~/api/request';
+import {
+  userApi
+} from '~/api/request';
 
 Page({
   data: {
-    isCheck: false,
-    isSubmit: false,
-    passwordInfo: {
-      username: '',
-      password: '',
-    },
-    radioValue: '',
+    username: '',
+    password: '',
+    agreeProtocol: false,
+    fromPage: ''
   },
 
-  /* 校验信息是否输入完整 */
-  changeSubmit() {
-    if (this.data.passwordInfo.username !== '' && this.data.passwordInfo.password !== '' && this.data.isCheck) {
-      this.setData({ isSubmit: true });
-    } else {
-      this.setData({ isSubmit: false });
+  onLoad(options) {
+    // 获取来源页面信息
+    if (options.from) {
+      this.setData({
+        fromPage: options.from
+      });
     }
   },
 
   // 用户协议选择变更
   onCheckChange(e) {
-    const { value } = e.detail;
+    const {
+      value
+    } = e.detail;
     this.setData({
-      radioValue: value,
-      isCheck: value === 'agree',
+      agreeProtocol: value === 'agree',
     });
-    this.changeSubmit();
   },
 
   onBackToHome() {
@@ -37,23 +36,15 @@ Page({
   },
 
   onAccountChange(e) {
-    this.setData({ 
-      passwordInfo: { 
-        ...this.data.passwordInfo, 
-        username: e.detail.value 
-      } 
+    this.setData({
+      username: e.detail.value
     });
-    this.changeSubmit();
   },
 
   onPasswordChange(e) {
-    this.setData({ 
-      passwordInfo: { 
-        ...this.data.passwordInfo, 
-        password: e.detail.value 
-      } 
+    this.setData({
+      password: e.detail.value
     });
-    this.changeSubmit();
   },
 
   onRegister() {
@@ -63,8 +54,11 @@ Page({
   },
 
   async login() {
-    const { username, password } = this.data.passwordInfo;
-    
+    const {
+      username,
+      password
+    } = this.data;
+
     // 表单验证
     if (!username || !password) {
       wx.showToast({
@@ -74,7 +68,7 @@ Page({
       return;
     }
 
-    if (!this.data.isCheck) {
+    if (!this.data.agreeProtocol) {
       wx.showToast({
         title: '请同意用户协议',
         icon: 'none'
@@ -83,32 +77,60 @@ Page({
     }
 
     try {
-      const res = await userApi.login({ username, password });
+      const res = await userApi.login({
+        username,
+        password
+      });
       if (res.code === 1) {
         wx.setStorageSync('access_token', res.data.token);
         // 更新全局登录状态
         const app = getApp();
         app.globalData.isLoggedIn = true;
         app.globalData.token = res.data.token;
-        
+        // 登录后初始化全局 WebSocket
+        if (app.initWebSocket) {
+          app.initWebSocket(res.data.token);
+        }
+
+        // 获取用户信息并存储
+        try {
+          const userRes = await userApi.getProfile();
+          if (userRes.code === 1) {
+            wx.setStorageSync('userInfo', userRes.data);
+            app.globalData.userInfo = userRes.data;
+          }
+        } catch (userError) {
+          console.error('获取用户信息失败：', userError);
+        }
+
         wx.showToast({
           title: res.message || '登录成功',
           icon: 'success',
           duration: 1500
         });
 
-        // 延迟跳转
         setTimeout(() => {
-          wx.switchTab({
-            url: '/pages/mynotes/index',
-          });
-          
-          // 通知上一个页面登录成功
-          const pages = getCurrentPages();
-          const prevPage = pages[pages.length - 2];
-          if (prevPage && prevPage.route === 'pages/release/index') {
-            const eventChannel = this.getOpenerEventChannel();
-            eventChannel.emit('loginSuccess');
+          // 获取来源页面信息
+          const fromPage = this.data.fromPage;
+          // 根据来源页面决定跳转目标
+          if (fromPage === 'my') {
+            wx.reLaunch({
+              url: '/pages/my/index'
+            });
+          } else if (fromPage === 'release') {
+            wx.reLaunch({
+              url: '/pages/release/index'
+            });
+          } else if (fromPage === 'message') {
+            wx.reLaunch({
+              url: '/pages/message/index'
+            });
+          } else if (fromPage === 'mynotes') {
+            wx.navigateBack();
+          } else {
+            wx.reLaunch({
+              url: '/pages/home/index'
+            });
           }
         }, 1500);
       } else {

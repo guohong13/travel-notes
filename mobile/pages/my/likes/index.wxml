@@ -1,0 +1,11 @@
+<t-navbar title="我的点赞" left-arrow></t-navbar>
+<view class="my-page">
+  <view class="travel-note-list">
+    <block wx:if="{{likes.length > 0}}">
+      <mycard wx:for="{{likes}}" wx:key="id" travelNote="{{item}}" show-status="{{false}}" show-actions="{{false}}" bind:tapcard="onTapCard" />
+    </block>
+    <block wx:else>
+      <view class="empty-tip">暂无点赞内容</view>
+    </block>
+  </view>
+</view>

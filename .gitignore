@@ -31,3 +31,35 @@ mobile/.Trashes
 
 # Node.js
 mobile/node_modules/
+
+# root-level dependencies and env
+node_modules/
+.env
+.env.*
+
+# logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# build outputs
+pc/build/
+pc/dist/
+mobile/dist/
+mobile/build/
+
+# Swagger generated files
+pc/server/swagger-output.json
+pc/server/swagger-output-*.json
+
+# editor/IDE
+.vscode/
+.idea/
+
+# Mini Program related
+mobile/miniprogram_npm/
+mobile/project.private.config.json
+mobile/project.config.private.json
+

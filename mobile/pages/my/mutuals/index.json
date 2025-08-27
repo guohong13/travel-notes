@@ -1,0 +1,7 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "user-list": "/components/user-list/index",
+    "t-navbar": "tdesign-miniprogram/navbar/navbar"
+  }
+}

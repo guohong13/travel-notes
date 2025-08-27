@@ -1,0 +1,61 @@
+<view class="my-page">
+  <!-- 自定义导航栏 -->
+  <view class="custom-navbar">
+    <view class="navbar-content">
+      <text class="navbar-title">我的</text>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 用户信息区域 -->
+  <view class="profile-section" wx:else>
+    <view class="profile-header">
+      <image class="avatar" src="{{userInfo.avatar}}" mode="aspectFill"></image>
+      <view class="user-info">
+        <text class="nickname">{{userInfo.nickname}}</text>
+        <text class="user-id">ID: {{userInfo.userId}}</text>
+      </view>
+      <view class="edit-btn" bindtap="onEditProfile">
+        <t-icon name="edit" size="32rpx" color="#666"></t-icon>
+      </view>
+    </view>
+  </view>
+
+  <!-- 统计数据区域 -->
+  <view class="stats-section" wx:if="{{!loading}}">
+    <view class="stats-item" data-type="likes" bindtap="onStatsTap">
+      <text class="stats-num">{{stats.likes}}</text>
+      <text class="stats-label">获赞</text>
+    </view>
+    <view class="stats-item" data-type="follows" bindtap="onStatsTap">
+      <text class="stats-num">{{stats.follows}}</text>
+      <text class="stats-label">关注</text>
+    </view>
+    <view class="stats-item" data-type="mutuals" bindtap="onStatsTap">
+      <text class="stats-num">{{stats.mutuals}}</text>
+      <text class="stats-label">互关</text>
+    </view>
+    <view class="stats-item" data-type="followers" bindtap="onStatsTap">
+      <text class="stats-num">{{stats.followers}}</text>
+      <text class="stats-label">粉丝</text>
+    </view>
+  </view>
+
+  <!-- 菜单列表 -->
+  <view class="menu-section" wx:if="{{!loading}}">
+    <view class="menu-item {{item.type === 'logout' ? 'logout-item' : ''}}" wx:for="{{menuList}}" wx:key="text" data-index="{{index}}" bindtap="onMenuTap">
+      <view class="menu-left">
+        <t-icon name="{{item.icon}}" size="40rpx" color="#333"></t-icon>
+        <text class="menu-text">{{item.text}}</text>
+      </view>
+      <view class="menu-right">
+        <t-icon wx:if="{{item.type !== 'logout'}}" name="chevron-right" size="32rpx" color="#ccc"></t-icon>
+      </view>
+    </view>
+  </view>
+</view>

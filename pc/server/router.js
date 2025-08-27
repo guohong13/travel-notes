@@ -6,6 +6,7 @@ const router = express.Router();
 const rateLimit = require("express-rate-limit");
 const crypto = require("crypto");
 const verifyUserToken = require("./middleware/userAuth");
+const { pushToUser } = require("./ws");
 const verifyAdminToken = require("./middleware/adminAuth");
 const upload = require("./middleware/multerConfig");
 
@@ -186,6 +187,114 @@ router.get("/users/profile", verifyUserToken, (req, res) => {
 });
 
 /**
+ * 更新用户资料接口（昵称/头像）
+ */
+router.put("/users/profile", verifyUserToken, async (req, res) => {
+  const userId = req.user.id;
+  const { nickname, avatar_url } = req.body || {};
+
+  if (!nickname && !avatar_url) {
+    return res.status(400).json({
+      code: 0,
+      message: "缺少需要更新的字段",
+      data: null,
+    });
+  }
+
+  try {
+    const fields = [];
+    const values = [];
+    if (typeof nickname === "string") {
+      fields.push("nickname = ?");
+      values.push(nickname);
+    }
+    if (typeof avatar_url === "string") {
+      fields.push("avatar_url = ?");
+      values.push(avatar_url);
+    }
+    values.push(userId);
+
+    const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = ?`;
+    const [result] = await db.promise().query(sql, values);
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ code: 0, message: "用户不存在", data: null });
+    }
+    return res.status(200).json({ code: 1, message: "更新成功", data: null });
+  } catch (err) {
+    console.error("更新用户资料失败:", err);
+    return res
+      .status(500)
+      .json({ code: 0, message: "服务器内部错误", data: null });
+  }
+});
+
+/**
+ * 修改用户密码接口
+ */
+router.put("/users/password", verifyUserToken, async (req, res) => {
+  const userId = req.user.id;
+  const { newPassword } = req.body || {};
+
+  if (!newPassword || String(newPassword).length < 6) {
+    return res.status(400).json({
+      code: 0,
+      message: "密码长度不能少于6位",
+      data: null,
+    });
+  }
+
+  try {
+    const hashed = await bcrypt.hash(String(newPassword), 10);
+    const [result] = await db
+      .promise()
+      .query("UPDATE users SET password_hash = ? WHERE id = ?", [
+        hashed,
+        userId,
+      ]);
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ code: 0, message: "用户不存在", data: null });
+    }
+    return res
+      .status(200)
+      .json({ code: 1, message: "修改密码成功", data: null });
+  } catch (err) {
+    console.error("修改密码失败:", err);
+    return res
+      .status(500)
+      .json({ code: 0, message: "服务器内部错误", data: null });
+  }
+});
+
+/**
+ * 用户头像单文件上传
+ */
+router.post(
+  "/upload/avatar",
+  verifyUserToken,
+  upload.single("avatar"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ code: 0, message: "未选择头像文件", data: null });
+      }
+      const url = `/uploads/${req.file.filename}`;
+      return res
+        .status(200)
+        .json({ code: 1, message: "上传成功", data: { url } });
+    } catch (err) {
+      console.error("头像上传失败:", err);
+      return res.status(500).json({ code: 0, message: "上传失败", data: null });
+    }
+  }
+);
+
+/**
  * 文件上传接口
  */
 router.post(
@@ -206,8 +315,8 @@ router.post(
         code: 1,
         message: "上传成功",
         data: {
-          images: images.map((img) => img.path),
-          video: video ? video.path : null,
+          images: images.map((img) => `/uploads/${img.filename}`),
+          video: video ? `/uploads/${video.filename}` : null,
         },
       });
     } catch (error) {
@@ -225,10 +334,10 @@ router.post(
  * 用户发布游记接口
  */
 router.post("/notes", verifyUserToken, async (req, res) => {
-  const { title, content, images, video_url } = req.body;
+  const { title, content, images, video_url, location, locationName, address } =
+    req.body;
   const userId = req.user.id;
 
-  // 校验请求体
   if (!title || !content) {
     return res.status(400).json({
       code: 0,
@@ -245,32 +354,43 @@ router.post("/notes", verifyUserToken, async (req, res) => {
     });
   }
 
-  // 开启事务
+  const locLat =
+    location && typeof location.latitude === "number"
+      ? location.latitude
+      : null;
+  const locLng =
+    location && typeof location.longitude === "number"
+      ? location.longitude
+      : null;
+  const locName = typeof locationName === "string" ? locationName : null;
+  const locAddr = typeof address === "string" ? address : null;
+
   const connection = await db.promise().getConnection();
   await connection.beginTransaction();
 
   try {
-    // 添加游记基本信息
     const addSql = `
-        INSERT INTO travel_notes (user_id, title, content, video_url, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
+        INSERT INTO travel_notes (user_id, title, content, video_url, status, created_at, updated_at, location_name, location_address, location_lat, location_lng)
+        VALUES (?, ?, ?, ?, 'pending', NOW(), NOW(), ?, ?, ?, ?)
       `;
     const [results] = await connection.query(addSql, [
       userId,
       title,
       content,
       video_url || null,
+      locName,
+      locAddr,
+      locLat,
+      locLng,
     ]);
 
     const travelNotesId = results.insertId;
 
-    // 添加游记图片数据
     const imageValues = images.map((image) => [travelNotesId, image, 0]);
     const addImagesSql =
       "INSERT INTO note_images (travel_notes_id, image_url, is_deleted) VALUES ?";
     await connection.query(addImagesSql, [imageValues]);
 
-    // 提交事务
     await connection.commit();
 
     return res.status(201).json({
@@ -282,10 +402,13 @@ router.post("/notes", verifyUserToken, async (req, res) => {
         content,
         images,
         video: video_url,
+        location_name: locName,
+        location_address: locAddr,
+        location_lat: locLat,
+        location_lng: locLng,
       },
     });
   } catch (error) {
-    // 回滚事务
     await connection.rollback();
     console.error("发布失败:", error);
     return res.status(500).json({
@@ -303,11 +426,11 @@ router.post("/notes", verifyUserToken, async (req, res) => {
  */
 router.put("/notes/modify/:id", verifyUserToken, async (req, res) => {
   const { id } = req.params;
-  const { title, content, images, video_url } = req.body;
+  const { title, content, images, video_url, location, locationName, address } =
+    req.body;
   const userId = req.user.id;
 
   try {
-    // 验证游记归属权
     const [existing] = await db
       .promise()
       .query(
@@ -323,7 +446,6 @@ router.put("/notes/modify/:id", verifyUserToken, async (req, res) => {
       });
     }
 
-    // 校验请求体
     if (!title || !content) {
       return res.status(400).json({
         code: 0,
@@ -340,18 +462,31 @@ router.put("/notes/modify/:id", verifyUserToken, async (req, res) => {
       });
     }
 
-    // 开启事务
+    const locLat =
+      location && typeof location.latitude === "number"
+        ? location.latitude
+        : null;
+    const locLng =
+      location && typeof location.longitude === "number"
+        ? location.longitude
+        : null;
+    const locName = typeof locationName === "string" ? locationName : null;
+    const locAddr = typeof address === "string" ? address : null;
+
     const connection = await db.promise().getConnection();
     await connection.beginTransaction();
 
     try {
-      // 更新主表数据
       const updateFields = {
         title,
         content,
         video_url: video_url || null,
         status: "pending",
         updated_at: new Date(),
+        location_name: locName,
+        location_address: locAddr,
+        location_lat: locLat,
+        location_lng: locLng,
       };
 
       await connection.query(
@@ -359,19 +494,16 @@ router.put("/notes/modify/:id", verifyUserToken, async (req, res) => {
         [updateFields, id]
       );
 
-      // 先删除所有旧图片（逻辑删除）
       await connection.query(
         "UPDATE note_images SET is_deleted = 1 WHERE travel_notes_id = ? AND is_deleted = 0",
         [id]
       );
 
-      // 添加新图片
       const imageValues = images.map((image) => [id, image, 0]);
       const addImagesSql =
         "INSERT INTO note_images (travel_notes_id, image_url, is_deleted) VALUES ?";
       await connection.query(addImagesSql, [imageValues]);
 
-      // 提交事务
       await connection.commit();
 
       return res.status(201).json({
@@ -383,6 +515,10 @@ router.put("/notes/modify/:id", verifyUserToken, async (req, res) => {
           content,
           images,
           video: video_url,
+          location_name: locName,
+          location_address: locAddr,
+          location_lat: locLat,
+          location_lng: locLng,
         },
       });
     } catch (transactionErr) {
@@ -475,6 +611,9 @@ router.delete("/notes/delete/:id", verifyUserToken, async (req, res) => {
  * 首页获取游记详情接口
  */
 router.get("/notes", async (req, res) => {
+  const { page = 1, pageSize = 10 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(pageSize);
+
   const querySql = `
       SELECT 
         tn.id,
@@ -486,6 +625,13 @@ router.get("/notes", async (req, res) => {
         tn.video_url,
         tn.created_at,
         tn.updated_at,
+        tn.like_count,
+        tn.collect_count,
+        tn.comment_count,
+        tn.location_name,
+        tn.location_address,
+        tn.location_lat,
+        tn.location_lng,
         GROUP_CONCAT(ni.image_url) AS images
       FROM travel_notes tn
       LEFT JOIN note_images ni 
@@ -497,15 +643,112 @@ router.get("/notes", async (req, res) => {
         AND tn.status = "approved"
       GROUP BY tn.id
       ORDER BY tn.updated_at DESC
+      LIMIT ? OFFSET ?
     `;
-  try {
-    const [notes] = await db.promise().query(querySql);
 
-    // 格式化图片数据
-    const formatted = notes.map((note) => ({
-      ...note,
-      images: note.images.split(","),
+  const countSql = `
+      SELECT COUNT(DISTINCT tn.id) as total
+      FROM travel_notes tn
+      WHERE tn.is_deleted = 0
+        AND tn.status = "approved"
+    `;
+
+  try {
+    // 并行执行查询和计数
+    const [notes, countResult] = await Promise.all([
+      db.promise().query(querySql, [parseInt(pageSize), offset]),
+      db.promise().query(countSql),
+    ]);
+
+    const [rows] = notes;
+    const [countRows] = countResult;
+
+    const processedRows = rows.map((row) => ({
+      ...row,
+      images: row.images ? row.images.split(",") : [],
     }));
+
+    const currentPage = parseInt(page);
+    const size = parseInt(pageSize);
+    const total = countRows[0].total;
+    const hasMore = currentPage * size < total;
+
+    return res.status(200).json({
+      code: 1,
+      message: "获取游记成功",
+      data: {
+        list: processedRows,
+        total,
+        pagination: {
+          current: currentPage,
+          pageSize: size,
+          hasMore,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("数据库错误:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取单条游记详情（允许未登录访问）
+ */
+router.get("/notes/detail/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const querySql = `
+    SELECT 
+      tn.id,
+      tn.user_id,
+      u.nickname,
+      u.avatar_url,
+      tn.title,
+      tn.content,
+      tn.video_url,
+      tn.created_at,
+      tn.updated_at,
+      tn.like_count,
+      tn.collect_count,
+      tn.comment_count,
+      tn.location_name,
+      tn.location_address,
+      tn.location_lat,
+      tn.location_lng,
+      GROUP_CONCAT(ni.image_url) AS images
+    FROM travel_notes tn
+    LEFT JOIN note_images ni 
+      ON tn.id = ni.travel_notes_id 
+      AND ni.is_deleted = 0
+    LEFT JOIN users u
+      ON tn.user_id = u.id
+    WHERE tn.is_deleted = 0
+      AND tn.status = 'approved'
+      AND tn.id = ?
+    GROUP BY tn.id
+    LIMIT 1
+  `;
+
+  try {
+    const [rows] = await db.promise().query(querySql, [id]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({
+        code: 0,
+        message: "未找到该游记或未通过审核",
+        data: null,
+      });
+    }
+
+    const note = rows[0];
+    const formatted = {
+      ...note,
+      images: note.images ? note.images.split(",") : [],
+    };
 
     return res.status(200).json({
       code: 1,
@@ -513,6 +756,7 @@ router.get("/notes", async (req, res) => {
       data: formatted,
     });
   } catch (err) {
+    console.error("获取游记详情失败:", err);
     return res.status(500).json({
       code: 0,
       message: "服务器错误",
@@ -537,6 +781,10 @@ router.get("/notes/user/:userId", verifyUserToken, async (req, res) => {
         tn.reject_reason,
         tn.created_at,
         tn.updated_at,
+        tn.location_name,
+        tn.location_address,
+        tn.location_lat,
+        tn.location_lng,
         GROUP_CONCAT(ni.image_url) AS images
       FROM travel_notes tn
       LEFT JOIN note_images ni 
@@ -550,10 +798,10 @@ router.get("/notes/user/:userId", verifyUserToken, async (req, res) => {
   try {
     const [notes] = await db.promise().query(querySql, [userId]);
 
-    // 格式化图片数据
+    // 安全处理图片数据为空的情况
     const formatted = notes.map((note) => ({
       ...note,
-      images: note.images.split(","),
+      images: note.images ? note.images.split(",") : [],
     }));
 
     return res.status(200).json({
@@ -593,6 +841,12 @@ router.get("/notes/search", async (req, res) => {
         tn.title,
         tn.video_url,
         tn.created_at,
+        tn.like_count,
+        tn.collect_count,
+        tn.location_name,
+        tn.location_address,
+        tn.location_lat,
+        tn.location_lng,
         u.nickname,
         u.avatar_url,
         GROUP_CONCAT(ni.image_url) AS images
@@ -609,7 +863,6 @@ router.get("/notes/search", async (req, res) => {
     const conditions = [];
     const params = [];
 
-    // 安全处理搜索条件
     if (title) {
       conditions.push("tn.title LIKE ?");
       params.push(`%${title}%`);
@@ -629,7 +882,7 @@ router.get("/notes/search", async (req, res) => {
     // 格式化结果
     const formatted = notes.map((note) => ({
       ...note,
-      images: note.images.split(","),
+      images: note.images ? note.images.split(",") : [],
     }));
 
     return res.status(200).json({
@@ -1113,6 +1366,24 @@ router.put("/notes/approve/:id", verifyAdminToken, async (req, res) => {
       const [result] = await connection.query(updateSql, [id]);
 
       await connection.commit();
+
+      // 审核通过后推送给作者
+      try {
+        const [[noteRow]] = await db
+          .promise()
+          .query("SELECT user_id, title FROM travel_notes WHERE id = ?", [id]);
+        if (noteRow) {
+          pushToUser(noteRow.user_id, {
+            type: "note_review",
+            data: {
+              noteId: parseInt(id),
+              noteTitle: noteRow.title || "",
+              action: "approved",
+            },
+          });
+        }
+      } catch (_) {}
+
       res.status(200).json({
         code: 1,
         message: "游记审核已通过",
@@ -1165,6 +1436,25 @@ router.put("/notes/reject/:id", verifyAdminToken, async (req, res) => {
       const [result] = await connection.query(updateSql, [rejectReason, id]);
 
       await connection.commit();
+
+      // 审核拒绝后推送给作者
+      try {
+        const [[noteRow]] = await db
+          .promise()
+          .query("SELECT user_id, title FROM travel_notes WHERE id = ?", [id]);
+        if (noteRow) {
+          pushToUser(noteRow.user_id, {
+            type: "note_review",
+            data: {
+              noteId: parseInt(id),
+              noteTitle: noteRow.title || "",
+              action: "rejected",
+              reason: rejectReason || "",
+            },
+          });
+        }
+      } catch (_) {}
+
       res.status(200).json({
         code: 1,
         message: "操作成功",
@@ -1230,6 +1520,24 @@ router.delete("/admin/notes/delete/:id", verifyAdminToken, async (req, res) => {
       await connection.query(deleteImageSql, [id]);
 
       await connection.commit();
+
+      // 删除后推送给作者
+      try {
+        const [[noteRow]] = await db
+          .promise()
+          .query("SELECT user_id, title FROM travel_notes WHERE id = ?", [id]);
+        if (noteRow) {
+          pushToUser(noteRow.user_id, {
+            type: "note_review",
+            data: {
+              noteId: parseInt(id),
+              noteTitle: noteRow.title || "",
+              action: "deleted",
+            },
+          });
+        }
+      } catch (_) {}
+
       res.status(200).json({
         code: 1,
         message: "游记已成功删除",
@@ -1246,6 +1554,1359 @@ router.delete("/admin/notes/delete/:id", verifyAdminToken, async (req, res) => {
       connection.release();
     }
   } catch (err) {
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 点赞/取消点赞接口
+ */
+router.post("/notes/:id/like", verifyUserToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 检查游记是否存在
+      const [noteResult] = await connection.query(
+        "SELECT id FROM travel_notes WHERE id = ? AND is_deleted = 0 AND status = 'approved'",
+        [id]
+      );
+
+      if (noteResult.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          code: 0,
+          message: "游记不存在或未通过审核",
+          data: null,
+        });
+      }
+
+      // 检查是否已经点赞
+      const [likeResult] = await connection.query(
+        "SELECT id FROM likes WHERE user_id = ? AND travel_note_id = ?",
+        [userId, id]
+      );
+
+      let isLiked = false;
+      let likeCount = 0;
+
+      if (likeResult.length > 0) {
+        // 已点赞，取消点赞
+        await connection.query(
+          "DELETE FROM likes WHERE user_id = ? AND travel_note_id = ?",
+          [userId, id]
+        );
+
+        // 更新游记点赞数
+        await connection.query(
+          "UPDATE travel_notes SET like_count = GREATEST(like_count - 1, 0) WHERE id = ?",
+          [id]
+        );
+
+        isLiked = false;
+      } else {
+        // 未点赞，添加点赞
+        await connection.query(
+          "INSERT INTO likes (user_id, travel_note_id) VALUES (?, ?)",
+          [userId, id]
+        );
+
+        // 更新游记点赞数
+        await connection.query(
+          "UPDATE travel_notes SET like_count = like_count + 1 WHERE id = ?",
+          [id]
+        );
+
+        isLiked = true;
+      }
+
+      // 获取更新后的点赞数
+      const [countResult] = await connection.query(
+        "SELECT like_count FROM travel_notes WHERE id = ?",
+        [id]
+      );
+      likeCount = countResult[0].like_count;
+
+      await connection.commit();
+
+      // 推送给游记作者（仅在点赞时推送），带上点赞者与游记信息
+      try {
+        if (isLiked) {
+          const [[noteRow]] = await db
+            .promise()
+            .query("SELECT user_id, title FROM travel_notes WHERE id = ?", [
+              id,
+            ]);
+          if (noteRow) {
+            const authorId = noteRow.user_id;
+            if (authorId !== userId) {
+              const [[fromUser]] = await db
+                .promise()
+                .query(
+                  "SELECT id, nickname, avatar_url FROM users WHERE id = ?",
+                  [userId]
+                );
+
+              pushToUser(authorId, {
+                type: "like",
+                data: {
+                  noteId: parseInt(id),
+                  noteTitle: noteRow.title,
+                  fromUserId: userId,
+                  fromNickname: fromUser ? fromUser.nickname : "",
+                  fromAvatar: fromUser ? fromUser.avatar_url : "",
+                  likeCount,
+                },
+              });
+            }
+          }
+        }
+      } catch (_) {}
+
+      res.status(200).json({
+        code: 1,
+        message: isLiked ? "点赞成功" : "取消点赞成功",
+        data: {
+          isLiked,
+          likeCount,
+        },
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      console.error("点赞操作失败:", transactionErr);
+      return res.status(500).json({
+        code: 0,
+        message: "操作失败，请稍后再试",
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("点赞接口错误:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取游记点赞状态和数量
+ */
+router.get("/notes/:id/like", async (req, res) => {
+  const { id } = req.params;
+  let userId = null;
+
+  // 尝试从可选的 Authorization 中解析用户，未登录也允许访问
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, jwtSecret);
+      userId = decoded && decoded.id ? decoded.id : null;
+    }
+  } catch (_) {}
+
+  try {
+    // 检查游记是否存在
+    const [noteResult] = await db
+      .promise()
+      .query(
+        "SELECT id, like_count FROM travel_notes WHERE id = ? AND is_deleted = 0 AND status = 'approved'",
+        [id]
+      );
+
+    if (noteResult.length === 0) {
+      return res.status(404).json({
+        code: 0,
+        message: "游记不存在或未通过审核",
+        data: null,
+      });
+    }
+
+    let isLiked = false;
+    if (userId) {
+      // 登录用户：检查是否已点赞
+      const [likeResult] = await db
+        .promise()
+        .query(
+          "SELECT id FROM likes WHERE user_id = ? AND travel_note_id = ?",
+          [userId, id]
+        );
+      isLiked = likeResult.length > 0;
+    }
+
+    const likeCount = noteResult[0].like_count;
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        isLiked,
+        likeCount,
+      },
+    });
+  } catch (err) {
+    console.error("获取点赞状态失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 收藏/取消收藏接口
+ */
+router.post("/notes/:id/collect", verifyUserToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 检查游记是否存在
+      const [noteResult] = await connection.query(
+        "SELECT id FROM travel_notes WHERE id = ? AND is_deleted = 0 AND status = 'approved'",
+        [id]
+      );
+
+      if (noteResult.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          code: 0,
+          message: "游记不存在或未通过审核",
+          data: null,
+        });
+      }
+
+      // 检查是否已经收藏
+      const [collectResult] = await connection.query(
+        "SELECT id FROM user_collects WHERE user_id = ? AND note_id = ?",
+        [userId, id]
+      );
+
+      let isCollected = false;
+      let collectCount = 0;
+
+      if (collectResult.length > 0) {
+        // 已收藏，取消收藏
+        await connection.query(
+          "DELETE FROM user_collects WHERE user_id = ? AND note_id = ?",
+          [userId, id]
+        );
+        await connection.query(
+          "UPDATE travel_notes SET collect_count = GREATEST(collect_count - 1, 0) WHERE id = ?",
+          [id]
+        );
+        isCollected = false;
+      } else {
+        // 未收藏，添加收藏
+        await connection.query(
+          "INSERT INTO user_collects (user_id, note_id) VALUES (?, ?)",
+          [userId, id]
+        );
+        await connection.query(
+          "UPDATE travel_notes SET collect_count = collect_count + 1 WHERE id = ?",
+          [id]
+        );
+        isCollected = true;
+      }
+
+      // 获取更新后的收藏数
+      const [countResult] = await connection.query(
+        "SELECT collect_count FROM travel_notes WHERE id = ?",
+        [id]
+      );
+      collectCount = countResult[0].collect_count;
+
+      await connection.commit();
+
+      // 推送给游记作者
+      try {
+        const [authorRows] = await db
+          .promise()
+          .query("SELECT user_id FROM travel_notes WHERE id = ?", [id]);
+        if (authorRows.length) {
+          const authorId = authorRows[0].user_id;
+          if (authorId !== userId && isCollected) {
+            // 附带收藏者信息与游记标题
+            const [[fromUser]] = await db
+              .promise()
+              .query(
+                "SELECT id, nickname, avatar_url FROM users WHERE id = ?",
+                [userId]
+              );
+            const [[noteRow]] = await db
+              .promise()
+              .query("SELECT title FROM travel_notes WHERE id = ?", [id]);
+            pushToUser(authorId, {
+              type: "collect",
+              data: {
+                noteId: parseInt(id),
+                noteTitle: noteRow ? noteRow.title : "",
+                fromUserId: userId,
+                fromNickname: fromUser ? fromUser.nickname : "",
+                fromAvatar: fromUser ? fromUser.avatar_url : "",
+                collectCount,
+              },
+            });
+          }
+        }
+      } catch (_) {}
+
+      res.status(200).json({
+        code: 1,
+        message: isCollected ? "收藏成功" : "取消收藏成功",
+        data: {
+          isCollected,
+          collectCount,
+        },
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      console.error("收藏操作失败:", transactionErr);
+      return res.status(500).json({
+        code: 0,
+        message: "操作失败，请稍后再试",
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("收藏接口错误:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取游记收藏状态和数量
+ */
+router.get("/notes/:id/collect", async (req, res) => {
+  const { id } = req.params;
+  let userId = null;
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, jwtSecret);
+      userId = decoded && decoded.id ? decoded.id : null;
+    }
+  } catch (_) {}
+
+  try {
+    // 检查游记是否存在
+    const [noteResult] = await db
+      .promise()
+      .query(
+        "SELECT id, collect_count FROM travel_notes WHERE id = ? AND is_deleted = 0 AND status = 'approved'",
+        [id]
+      );
+
+    if (noteResult.length === 0) {
+      return res.status(404).json({
+        code: 0,
+        message: "游记不存在或未通过审核",
+        data: null,
+      });
+    }
+
+    let isCollected = false;
+    if (userId) {
+      const [collectResult] = await db
+        .promise()
+        .query(
+          "SELECT id FROM user_collects WHERE user_id = ? AND note_id = ?",
+          [userId, id]
+        );
+      isCollected = collectResult.length > 0;
+    }
+    const collectCount = noteResult[0].collect_count;
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        isCollected,
+        collectCount,
+      },
+    });
+  } catch (err) {
+    console.error("获取收藏状态失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取用户收藏的游记列表
+ */
+router.get("/users/collects", verifyUserToken, async (req, res) => {
+  const userId = req.user.id;
+  const { page = 1, pageSize = 10 } = req.query;
+  const offset = (page - 1) * pageSize;
+
+  try {
+    const querySql = `
+      SELECT 
+        tn.id,
+        tn.title,
+        tn.content,
+        tn.video_url,
+        tn.created_at,
+        tn.updated_at,
+        tn.like_count,
+        tn.collect_count,
+        u.nickname,
+        u.avatar_url,
+        GROUP_CONCAT(ni.image_url) AS images
+      FROM user_collects uc
+      JOIN travel_notes tn ON uc.note_id = tn.id
+      LEFT JOIN note_images ni ON tn.id = ni.travel_notes_id AND ni.is_deleted = 0
+      LEFT JOIN users u ON tn.user_id = u.id
+      WHERE uc.user_id = ? 
+        AND uc.is_deleted = 0
+        AND tn.is_deleted = 0 
+        AND tn.status = 'approved'
+      GROUP BY tn.id
+      ORDER BY uc.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [notes] = await db
+      .promise()
+      .query(querySql, [userId, parseInt(pageSize), parseInt(offset)]);
+
+    // 格式化图片数据
+    const formatted = notes.map((note) => ({
+      ...note,
+      images: note.images ? note.images.split(",") : [],
+    }));
+
+    const total = countRows[0].total;
+    const currentPage = parseInt(page);
+    const size = parseInt(pageSize);
+    const hasMore = currentPage * size < total;
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        list: formatted,
+        total,
+        pagination: {
+          current: currentPage,
+          pageSize: size,
+          hasMore,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("获取用户收藏列表失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取用户点赞的游记列表
+ */
+router.get("/users/likes", verifyUserToken, async (req, res) => {
+  const userId = req.user.id;
+  const { page = 1, pageSize = 10 } = req.query;
+  const offset = (page - 1) * pageSize;
+
+  try {
+    const querySql = `
+      SELECT 
+        tn.id,
+        tn.title,
+        tn.content,
+        tn.video_url,
+        tn.created_at,
+        tn.updated_at,
+        tn.like_count,
+        u.nickname,
+        u.avatar_url,
+        GROUP_CONCAT(ni.image_url) AS images
+      FROM likes l
+      JOIN travel_notes tn ON l.travel_note_id = tn.id
+      LEFT JOIN note_images ni ON tn.id = ni.travel_notes_id AND ni.is_deleted = 0
+      LEFT JOIN users u ON tn.user_id = u.id
+      WHERE l.user_id = ? 
+        AND tn.is_deleted = 0 
+        AND tn.status = 'approved'
+      GROUP BY tn.id
+      ORDER BY l.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [notes] = await db
+      .promise()
+      .query(querySql, [userId, parseInt(pageSize), parseInt(offset)]);
+
+    // 格式化图片数据
+    const formatted = notes.map((note) => ({
+      ...note,
+      images: note.images ? note.images.split(",") : [],
+    }));
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        list: formatted,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+      },
+    });
+  } catch (err) {
+    console.error("获取用户点赞列表失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取关注用户的游记列表
+ */
+router.get("/notes/following", verifyUserToken, async (req, res) => {
+  const userId = req.user.id;
+  const { page = 1, pageSize = 10 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(pageSize);
+
+  const querySql = `
+      SELECT 
+        tn.id,
+        tn.user_id,
+        u.nickname,
+        u.avatar_url,
+        tn.title,
+        tn.content,
+        tn.video_url,
+        tn.created_at,
+        tn.updated_at,
+        tn.like_count,
+        tn.collect_count,
+        tn.comment_count,
+        tn.location_name,
+        tn.location_address,
+        tn.location_lat,
+        tn.location_lng,
+        GROUP_CONCAT(ni.image_url) AS images
+      FROM travel_notes tn
+      LEFT JOIN note_images ni 
+        ON tn.id = ni.travel_notes_id 
+        AND ni.is_deleted = 0
+      LEFT JOIN users u
+        ON tn.user_id = u.id
+      INNER JOIN user_follows uf
+        ON tn.user_id = uf.following_id
+        AND uf.follower_id = ?
+        AND uf.is_deleted = 0
+      WHERE tn.is_deleted = 0
+        AND tn.status = "approved"
+      GROUP BY tn.id
+      ORDER BY tn.updated_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+  const countSql = `
+      SELECT COUNT(DISTINCT tn.id) as total
+      FROM travel_notes tn
+      INNER JOIN user_follows uf
+        ON tn.user_id = uf.following_id
+        AND uf.follower_id = ?
+        AND uf.is_deleted = 0
+      WHERE tn.is_deleted = 0
+        AND tn.status = "approved"
+    `;
+
+  try {
+    const [notes, countResult] = await Promise.all([
+      db.promise().query(querySql, [userId, parseInt(pageSize), offset]),
+      db.promise().query(countSql, [userId]),
+    ]);
+
+    const total = countResult[0][0].total;
+    const totalPages = Math.ceil(total / parseInt(pageSize));
+    const hasMore = parseInt(page) < totalPages;
+
+    const formatted = notes[0].map((note) => ({
+      ...note,
+      images: note.images ? note.images.split(",") : [],
+    }));
+
+    return res.status(200).json({
+      code: 1,
+      message: "请求成功",
+      data: {
+        list: formatted,
+        pagination: {
+          page: parseInt(page),
+          pageSize: parseInt(pageSize),
+          total,
+          totalPages,
+          hasMore,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("获取关注列表失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 关注/取消关注用户接口
+ */
+router.post("/users/follow", verifyUserToken, async (req, res) => {
+  const { targetUserId } = req.body;
+  const followerId = req.user.id;
+
+  // 不能关注自己
+  if (followerId === parseInt(targetUserId)) {
+    return res.status(400).json({
+      code: 0,
+      message: "不能关注自己",
+      data: null,
+    });
+  }
+
+  try {
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 检查目标用户是否存在
+      const [targetUser] = await connection.query(
+        "SELECT id FROM users WHERE id = ?",
+        [targetUserId]
+      );
+
+      if (targetUser.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          code: 0,
+          message: "目标用户不存在",
+          data: null,
+        });
+      }
+
+      // 检查是否已经关注
+      const [existingFollow] = await connection.query(
+        "SELECT id, is_deleted FROM user_follows WHERE follower_id = ? AND following_id = ?",
+        [followerId, targetUserId]
+      );
+
+      let isFollowing = false;
+      let action = "";
+
+      if (existingFollow.length > 0) {
+        if (existingFollow[0].is_deleted) {
+          // 重新关注
+          await connection.query(
+            "UPDATE user_follows SET is_deleted = 0, updated_at = NOW() WHERE follower_id = ? AND following_id = ?",
+            [followerId, targetUserId]
+          );
+          isFollowing = true;
+          action = "重新关注";
+        } else {
+          // 取消关注
+          await connection.query(
+            "UPDATE user_follows SET is_deleted = 1, updated_at = NOW() WHERE follower_id = ? AND following_id = ?",
+            [followerId, targetUserId]
+          );
+          isFollowing = false;
+          action = "取消关注";
+        }
+      } else {
+        // 新增关注
+        await connection.query(
+          "INSERT INTO user_follows (follower_id, following_id) VALUES (?, ?)",
+          [followerId, targetUserId]
+        );
+        isFollowing = true;
+        action = "关注";
+      }
+
+      await connection.commit();
+
+      // 推送给被关注者，附带关注者基本信息
+      try {
+        if (isFollowing) {
+          const [[fromUser]] = await db
+            .promise()
+            .query("SELECT id, nickname, avatar_url FROM users WHERE id = ?", [
+              followerId,
+            ]);
+          pushToUser(parseInt(targetUserId), {
+            type: "follow",
+            data: {
+              fromUserId: followerId,
+              fromNickname: fromUser ? fromUser.nickname : "",
+              fromAvatar: fromUser ? fromUser.avatar_url : "",
+            },
+          });
+        }
+      } catch (_) {}
+
+      res.status(200).json({
+        code: 1,
+        message: `${action}成功`,
+        data: {
+          isFollowing,
+          targetUserId: parseInt(targetUserId),
+        },
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      console.error("关注操作失败:", transactionErr);
+      return res.status(500).json({
+        code: 0,
+        message: "操作失败，请稍后再试",
+        data: null,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("关注接口错误:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取关注状态接口
+ */
+router.get(
+  "/users/follow/status/:targetUserId",
+  verifyUserToken,
+  async (req, res) => {
+    const { targetUserId } = req.params;
+    const followerId = req.user.id;
+
+    try {
+      const [followResult] = await db
+        .promise()
+        .query(
+          "SELECT id, is_deleted FROM user_follows WHERE follower_id = ? AND following_id = ?",
+          [followerId, targetUserId]
+        );
+
+      const isFollowing =
+        followResult.length > 0 && !followResult[0].is_deleted;
+
+      res.status(200).json({
+        code: 1,
+        message: "获取成功",
+        data: {
+          isFollowing,
+          targetUserId: parseInt(targetUserId),
+        },
+      });
+    } catch (err) {
+      console.error("获取关注状态失败:", err);
+      return res.status(500).json({
+        code: 0,
+        message: "服务器内部错误",
+        data: null,
+      });
+    }
+  }
+);
+
+/**
+ * 获取用户的关注列表接口
+ */
+router.get("/users/following", verifyUserToken, async (req, res) => {
+  const userId = req.user.id;
+  const { page = 1, pageSize = 20 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(pageSize);
+
+  try {
+    const querySql = `
+      SELECT 
+        u.id,
+        u.username,
+        u.nickname,
+        u.avatar_url,
+        uf.created_at as follow_time
+      FROM user_follows uf
+      JOIN users u ON uf.following_id = u.id
+      WHERE uf.follower_id = ? 
+        AND uf.is_deleted = 0
+      ORDER BY uf.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM user_follows uf
+      WHERE uf.follower_id = ? 
+        AND uf.is_deleted = 0
+    `;
+
+    const [users, countResult] = await Promise.all([
+      db.promise().query(querySql, [userId, parseInt(pageSize), offset]),
+      db.promise().query(countSql, [userId]),
+    ]);
+
+    const total = countResult[0][0].total;
+    const totalPages = Math.ceil(total / parseInt(pageSize));
+    const hasMore = parseInt(page) < totalPages;
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        list: users[0],
+        pagination: {
+          page: parseInt(page),
+          pageSize: parseInt(pageSize),
+          total,
+          totalPages,
+          hasMore,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("获取关注列表失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取用户的粉丝列表接口
+ */
+router.get("/users/followers", verifyUserToken, async (req, res) => {
+  const userId = req.user.id;
+  const { page = 1, pageSize = 20 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(pageSize);
+
+  try {
+    const querySql = `
+      SELECT 
+        u.id,
+        u.username,
+        u.nickname,
+        u.avatar_url,
+        uf.created_at as follow_time
+      FROM user_follows uf
+      JOIN users u ON uf.follower_id = u.id
+      WHERE uf.following_id = ? 
+        AND uf.is_deleted = 0
+      ORDER BY uf.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM user_follows uf
+      WHERE uf.following_id = ? 
+        AND uf.is_deleted = 0
+    `;
+
+    const [users, countResult] = await Promise.all([
+      db.promise().query(querySql, [userId, parseInt(pageSize), offset]),
+      db.promise().query(countSql, [userId]),
+    ]);
+
+    const total = countResult[0][0].total;
+    const totalPages = Math.ceil(total / parseInt(pageSize));
+    const hasMore = parseInt(page) < totalPages;
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        list: users[0],
+        pagination: {
+          page: parseInt(page),
+          pageSize: parseInt(pageSize),
+          total,
+          totalPages,
+          hasMore,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("获取粉丝列表失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取游记评论列表接口
+ */
+router.get("/notes/:id/comments", async (req, res) => {
+  const { id } = req.params;
+  const { page = 1, pageSize = 20 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(pageSize);
+
+  try {
+    // 检查游记是否存在
+    const [noteResult] = await db
+      .promise()
+      .query(
+        "SELECT id FROM travel_notes WHERE id = ? AND is_deleted = 0 AND status = 'approved'",
+        [id]
+      );
+
+    if (noteResult.length === 0) {
+      return res.status(404).json({
+        code: 0,
+        message: "游记不存在或未通过审核",
+        data: null,
+      });
+    }
+
+    const querySql = `
+      SELECT 
+        c.id,
+        c.note_id,
+        c.user_id,
+        c.content,
+        c.like_count,
+        c.created_at,
+        c.updated_at,
+        u.nickname,
+        u.avatar_url
+      FROM comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE c.note_id = ? AND c.is_deleted = 0
+      ORDER BY c.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM comments c
+      WHERE c.note_id = ? AND c.is_deleted = 0
+    `;
+
+    const [comments, countResult] = await Promise.all([
+      db.promise().query(querySql, [id, parseInt(pageSize), offset]),
+      db.promise().query(countSql, [id]),
+    ]);
+
+    const total = countResult[0][0].total;
+    const totalPages = Math.ceil(total / parseInt(pageSize));
+    const hasMore = parseInt(page) < totalPages;
+
+    // 如果用户已登录，获取评论点赞状态
+    let commentsWithLikeStatus = comments[0];
+    const userInfo = req.headers.authorization
+      ? jwt.verify(req.headers.authorization.replace("Bearer ", ""), jwtSecret)
+      : null;
+
+    if (userInfo && userInfo.id) {
+      const userId = userInfo.id;
+      const commentIds = comments[0].map((c) => c.id);
+
+      if (commentIds.length > 0) {
+        const [likeResults] = await db
+          .promise()
+          .query(
+            "SELECT comment_id FROM comment_likes WHERE user_id = ? AND comment_id IN (?)",
+            [userId, commentIds]
+          );
+
+        const likedCommentIds = new Set(likeResults.map((r) => r.comment_id));
+
+        commentsWithLikeStatus = comments[0].map((comment) => ({
+          ...comment,
+          isLiked: likedCommentIds.has(comment.id),
+        }));
+      }
+    } else {
+      commentsWithLikeStatus = comments[0].map((comment) => ({
+        ...comment,
+        isLiked: false,
+      }));
+    }
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        list: commentsWithLikeStatus,
+        pagination: {
+          page: parseInt(page),
+          pageSize: parseInt(pageSize),
+          total,
+          totalPages,
+          hasMore,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("获取评论列表失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 发表评论接口
+ */
+router.post("/notes/:id/comments", verifyUserToken, async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  const userId = req.user.id;
+
+  if (!content || !content.trim()) {
+    return res.status(400).json({
+      code: 0,
+      message: "评论内容不能为空",
+      data: null,
+    });
+  }
+
+  if (content.trim().length > 500) {
+    return res.status(400).json({
+      code: 0,
+      message: "评论内容不能超过500字",
+      data: null,
+    });
+  }
+
+  try {
+    // 检查游记是否存在
+    const [noteResult] = await db
+      .promise()
+      .query(
+        "SELECT id FROM travel_notes WHERE id = ? AND is_deleted = 0 AND status = 'approved'",
+        [id]
+      );
+
+    if (noteResult.length === 0) {
+      return res.status(404).json({
+        code: 0,
+        message: "游记不存在或未通过审核",
+        data: null,
+      });
+    }
+
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 插入评论
+      const [commentResult] = await connection.query(
+        "INSERT INTO comments (note_id, user_id, content) VALUES (?, ?, ?)",
+        [id, userId, content.trim()]
+      );
+
+      const commentId = commentResult.insertId;
+
+      // 更新游记评论数
+      await connection.query(
+        "UPDATE travel_notes SET comment_count = comment_count + 1 WHERE id = ?",
+        [id]
+      );
+
+      await connection.commit();
+
+      // 获取新插入的评论信息
+      const [newComment] = await db.promise().query(
+        `SELECT 
+            c.id,
+            c.note_id,
+            c.user_id,
+            c.content,
+            c.like_count,
+            c.created_at,
+            c.updated_at,
+            u.nickname,
+            u.avatar_url
+          FROM comments c
+          LEFT JOIN users u ON c.user_id = u.id
+          WHERE c.id = ?`,
+        [commentId]
+      );
+
+      // 推送给游记作者
+      try {
+        const [authorRows] = await db
+          .promise()
+          .query("SELECT user_id FROM travel_notes WHERE id = ?", [id]);
+        if (authorRows.length) {
+          const authorId = authorRows[0].user_id;
+          if (authorId !== userId) {
+            // 附带评论者信息与游记标题
+            const [[fromUser]] = await db
+              .promise()
+              .query(
+                "SELECT id, nickname, avatar_url FROM users WHERE id = ?",
+                [userId]
+              );
+            const [[noteRow]] = await db
+              .promise()
+              .query("SELECT title FROM travel_notes WHERE id = ?", [id]);
+
+            pushToUser(authorId, {
+              type: "comment",
+              data: {
+                noteId: parseInt(id),
+                noteTitle: noteRow ? noteRow.title : "",
+                commentId,
+                fromUserId: userId,
+                fromNickname: fromUser ? fromUser.nickname : "",
+                fromAvatar: fromUser ? fromUser.avatar_url : "",
+              },
+            });
+          }
+        }
+      } catch (_) {}
+
+      res.status(201).json({
+        code: 1,
+        message: "评论发表成功",
+        data: {
+          ...newComment[0],
+          isLiked: false,
+        },
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      throw transactionErr;
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("发表评论失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "发表评论失败，请稍后再试",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 评论点赞/取消点赞接口
+ */
+router.post("/comments/:id/like", verifyUserToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    // 检查评论是否存在
+    const [commentResult] = await db
+      .promise()
+      .query("SELECT id FROM comments WHERE id = ? AND is_deleted = 0", [id]);
+
+    if (commentResult.length === 0) {
+      return res.status(404).json({
+        code: 0,
+        message: "评论不存在",
+        data: null,
+      });
+    }
+
+    const connection = await db.promise().getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // 检查是否已经点赞
+      const [likeResult] = await connection.query(
+        "SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?",
+        [id, userId]
+      );
+
+      let isLiked = false;
+      let likeCount = 0;
+
+      if (likeResult.length > 0) {
+        // 已点赞，取消点赞
+        await connection.query(
+          "DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?",
+          [id, userId]
+        );
+
+        // 更新评论点赞数
+        await connection.query(
+          "UPDATE comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = ?",
+          [id]
+        );
+
+        isLiked = false;
+      } else {
+        // 未点赞，添加点赞
+        await connection.query(
+          "INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)",
+          [id, userId]
+        );
+
+        // 更新评论点赞数
+        await connection.query(
+          "UPDATE comments SET like_count = like_count + 1 WHERE id = ?",
+          [id]
+        );
+
+        isLiked = true;
+      }
+
+      // 获取更新后的点赞数
+      const [countResult] = await connection.query(
+        "SELECT like_count FROM comments WHERE id = ?",
+        [id]
+      );
+      likeCount = countResult[0].like_count;
+
+      await connection.commit();
+
+      res.status(200).json({
+        code: 1,
+        message: isLiked ? "点赞成功" : "取消点赞成功",
+        data: {
+          isLiked,
+          likeCount,
+        },
+      });
+    } catch (transactionErr) {
+      await connection.rollback();
+      throw transactionErr;
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("评论点赞操作失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "操作失败，请稍后再试",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取评论点赞状态接口
+ */
+router.get("/comments/:id/like", verifyUserToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  try {
+    // 检查评论是否存在
+    const [commentResult] = await db
+      .promise()
+      .query(
+        "SELECT id, like_count FROM comments WHERE id = ? AND is_deleted = 0",
+        [id]
+      );
+
+    if (commentResult.length === 0) {
+      return res.status(404).json({
+        code: 0,
+        message: "评论不存在",
+        data: null,
+      });
+    }
+
+    // 检查用户是否已点赞
+    const [likeResult] = await db
+      .promise()
+      .query(
+        "SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?",
+        [id, userId]
+      );
+
+    const isLiked = likeResult.length > 0;
+    const likeCount = commentResult[0].like_count;
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        isLiked,
+        likeCount,
+      },
+    });
+  } catch (err) {
+    console.error("获取评论点赞状态失败:", err);
+    return res.status(500).json({
+      code: 0,
+      message: "服务器内部错误",
+      data: null,
+    });
+  }
+});
+
+/**
+ * 获取用户获赞总数接口
+ */
+router.get("/users/received-likes", verifyUserToken, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const countSql = `
+      SELECT COALESCE(SUM(tn.like_count), 0) as total
+      FROM travel_notes tn
+      WHERE tn.user_id = ? 
+        AND tn.is_deleted = 0 
+        AND tn.status = 'approved'
+    `;
+
+    const [countResult] = await db.promise().query(countSql, [userId]);
+    const total = countResult[0].total;
+
+    res.status(200).json({
+      code: 1,
+      message: "获取成功",
+      data: {
+        total: parseInt(total),
+      },
+    });
+  } catch (err) {
+    console.error("获取用户获赞总数失败:", err);
     return res.status(500).json({
       code: 0,
       message: "服务器内部错误",

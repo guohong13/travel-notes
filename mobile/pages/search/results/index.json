@@ -1,6 +1,7 @@
 {
-  "navigationBarTitleText": "搜索结果",
+  "navigationStyle": "custom",
   "usingComponents": {
-    "card": "/components/card"
+    "card": "/components/card",
+    "t-navbar": "tdesign-miniprogram/navbar/navbar"
   }
-} 
+}

@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "mycard": "/components/mycard/index",
+    "t-navbar": "tdesign-miniprogram/navbar/navbar"
+  }
+}

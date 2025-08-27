@@ -2,6 +2,7 @@
   "component": true,
   "usingComponents": {
     "t-image": "tdesign-miniprogram/image/image",
-    "t-tag": "tdesign-miniprogram/tag/tag"
+    "t-tag": "tdesign-miniprogram/tag/tag",
+    "t-icon": "tdesign-miniprogram/icon/icon"
   }
 }
