@@ -31,14 +31,14 @@
 - 个人主页界面
 
 <p>
-  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记列表.png?raw=true" height="300"/>
+  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记列表1.png?raw=true" height="300"/>
   <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记列表2.png?raw=true" height="300"/>
   <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记搜索.png?raw=true" height="300"/>
   <img src="https://github.com/guohong13/travel-notes/blob/main/assets/小程序注册.png?raw=true" height="300"/>
   <img src="https://github.com/guohong13/travel-notes/blob/main/assets/小程序登入.png?raw=true" height="300"/>
 </p>
 <p>
-  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记详情.png?raw=true" height="300"/>
+  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记详情1.png?raw=true" height="300"/>
   <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记详情2.png?raw=true" height="300"/>
   <img src="https://github.com/guohong13/travel-notes/blob/main/assets/实时通知.png?raw=true" height="300"/>
   <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记发布.png?raw=true" height="300"/>
