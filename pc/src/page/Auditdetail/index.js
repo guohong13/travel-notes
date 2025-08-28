@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import formatDate from "@/utils/date";
 import "./index.scss";
 import { notesAPI } from "@/apis";
+import { processImages, processVideo } from "@/utils/path";
 
 const AuditDetail = () => {
   const { id } = useParams();
@@ -80,6 +81,9 @@ const AuditDetail = () => {
   if (!noteDetail) {
     return <div className="error-message">未找到相关游记信息</div>;
   }
+
+  const processedImages = processImages(noteDetail.images);
+  const processedVideoUrl = processVideo(noteDetail.video_url);
 
   return (
     <Card
@@ -185,21 +189,23 @@ const AuditDetail = () => {
           <div className="media-section">
             <h3>游记图片</h3>
             <div className="image-list">
-              <Image.PreviewGroup items={noteDetail.images || []}>
-                <Image
-                  width={200}
-                  src={noteDetail.images?.[0]}
-                  style={{ marginRight: 10 }}
-                />
+              <Image.PreviewGroup items={processedImages}>
+                {processedImages[0] && (
+                  <Image
+                    width={200}
+                    src={processedImages[0]}
+                    style={{ marginRight: 10 }}
+                  />
+                )}
               </Image.PreviewGroup>
             </div>
           </div>
 
-          {noteDetail.video_url && (
+          {processedVideoUrl && (
             <div className="media-section">
               <h3>游记视频</h3>
               <div className="video-wrapper">
-                <video controls src={noteDetail.video_url} />
+                <video controls src={processedVideoUrl} />
               </div>
             </div>
           )}

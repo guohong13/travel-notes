@@ -1,5 +1,6 @@
 import React from "react";
 import { Card, Table, Tag, Image } from "antd";
+import { processSingleImage } from "@/utils/path";
 
 const ArticleCard = ({
   data,
@@ -15,11 +16,7 @@ const ArticleCard = ({
       key: "images",
       align: "center",
       render: (imageUrls) => {
-        const baseUrl = "http://localhost:3300/";
-        const url =
-          imageUrls && imageUrls.length > 0
-            ? baseUrl + imageUrls[0].replace(/\\/g, "/")
-            : null;
+        const url = processSingleImage(imageUrls);
         return (
           url && (
             <Image

@@ -62,12 +62,12 @@
 - 游记审核页面
 
 <p>
-  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E5%AE%A1%E6%A0%B8%E7%99%BB%E5%85%A5.png" width="400"/>
-  <img src="https://raw.githubusercontent.com/guohong13/travel-notes/main/assets/%E5%AE%A1%E6%A0%B8%E9%A6%96%E9%A1%B5.png" width="400"/>
+  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/审核登入.png?raw=true" width="400"/>
+  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/审核首页.png?raw=true" width="400"/>
 </p>
 <p>
-  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E5%88%97%E8%A1%A82.png?raw=true" width="400"/>
-  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/%E6%B8%B8%E8%AE%B0%E5%AE%A1%E6%A0%B8.png?raw=true" width="400"/>
+  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/审核列表.png?raw=true" width="400"/>
+  <img src="https://github.com/guohong13/travel-notes/blob/main/assets/游记审核.png?raw=true" width="400"/>
 </p>
 
 ## 主要技术栈

@@ -1183,14 +1183,8 @@ router.get("/admin/notes/:id", verifyAdminToken, async (req, res) => {
     // 处理图片数据
     const formattedNote = {
       ...notes[0],
-      video_url: notes[0].video_url
-        ? `http://localhost:3300/${notes[0].video_url.replace(/\\/g, "/")}`
-        : null,
-      images: notes[0].images
-        ? notes[0].images
-            .split(",")
-            .map((img) => `http://localhost:3300/${img.replace(/\\/g, "/")}`)
-        : [],
+      video_url: notes[0].video_url,
+      images: notes[0].images,
     };
 
     return res.status(200).json({
@@ -1318,7 +1312,7 @@ router.get("/notes/admin/filter", verifyAdminToken, async (req, res) => {
     // 格式化结果
     const formatted = notes.map((note) => ({
       ...note,
-      images: note.images ? note.images.split(",") : [],
+      images: note.images,
     }));
 
     res.status(200).json({

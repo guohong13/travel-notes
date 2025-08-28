@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { notesAPI } from "@/apis";
 import ArticleCard from "@/components/ArticleCard";
 import Search from "@/components/Search";
@@ -17,7 +17,7 @@ const Notes = () => {
   const [filters, setFilters] = useState({ status: "pending" });
   const [loading, setLoading] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -26,11 +26,7 @@ const Notes = () => {
         pageSize: data.pageSize,
       };
 
-      // console.log("API请求参数:", params);
-
       const response = await notesAPI.getNotes(params);
-
-      // console.log("API响应数据:", response.data);
 
       setData((prev) => ({
         ...prev,
@@ -47,11 +43,11 @@ const Notes = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, data.page, data.pageSize]);
 
   useEffect(() => {
     fetchData();
-  }, [filters, data.page, data.pageSize]);
+  }, [fetchData]);
 
   const handleRowClick = (record) => {
     navigate(`/travel-notes/audit/${record.id}`);
